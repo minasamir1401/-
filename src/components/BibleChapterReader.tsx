@@ -282,9 +282,9 @@ export function BibleChapterReader({ book, chapter, verses, commentaries, apolog
     <div className="space-y-6">
       {/* Sticky Chapter Toolbar */}
       <div
-        className="card-manuscript p-4 flex flex-wrap items-center justify-between gap-3 sticky top-18 lg:top-34 z-30"
+        className="card-manuscript p-4 flex flex-wrap items-center justify-between gap-3 sm:sticky sm:top-18 lg:top-34 z-30"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Link href="/bible" className="text-xs underline" style={{ color: 'var(--accent-burgundy)' }}>
             كل الأسفار
           </Link>
@@ -428,7 +428,7 @@ export function BibleChapterReader({ book, chapter, verses, commentaries, apolog
                         </span>
 
                         <p
-                          className="font-scripture flex-1 leading-[2] selection:bg-[var(--accent-gold)]/30"
+                          className="font-scripture min-w-0 flex-1 leading-[2] selection:bg-[var(--accent-gold)]/30"
                           style={{ fontSize: `${fontSize}px` }}
                         >
                           {display}
@@ -552,7 +552,7 @@ export function BibleChapterReader({ book, chapter, verses, commentaries, apolog
           )}
 
           {/* Bottom Chapter Prev/Next */}
-          <div className="flex items-center justify-between pt-6 border-t" style={{ borderColor: 'var(--border-hairline)' }}>
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-6 border-t" style={{ borderColor: 'var(--border-hairline)' }}>
             {chapter > 1 ? (
               <Link
                 href={`/bible/${book.slug}/${chapter - 1}`}

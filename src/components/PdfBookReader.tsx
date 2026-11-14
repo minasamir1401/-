@@ -15,12 +15,14 @@ type ReaderTheme = 'light' | 'sepia' | 'dark';
 
 export function PdfBookReader({ slug, title, authorName }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const pdfDocRef = useRef<import('pdfjs-dist').PDFDocumentProxy | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
 
   const [pageNum, setPageNum] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
-  const [scale, setScale] = useState(1.25);
+  const [scale, setScale] = useState(1);
+  const [availableWidth, setAvailableWidth] = useState(0);
   const [theme, setTheme] = useState<ReaderTheme>('sepia');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,14 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
   const streamUrl = `/library/${encodeURIComponent(slug)}/file/stream`;
   const downloadUrl = `/library/${encodeURIComponent(slug)}/file/download`;
   const progressStorageKey = `orthodox-book-page:${slug}`;
+
+  useEffect(() => {
+    const container = viewportRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(([entry]) => setAvailableWidth(entry.contentRect.width));
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,7 +95,7 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
     async function renderPage() {
       const doc = pdfDocRef.current;
       const canvas = canvasRef.current;
-      if (!doc || !canvas || pageNum < 1 || pageNum > doc.numPages) return;
+      if (!doc || !canvas || !availableWidth || pageNum < 1 || pageNum > doc.numPages) return;
 
       renderTaskRef.current?.cancel();
 
@@ -94,7 +104,9 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
         if (!active) return;
 
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const viewport = page.getViewport({ scale });
+        const naturalWidth = page.getViewport({ scale: 1 }).width;
+        const fitScale = Math.min(1.25, availableWidth / naturalWidth);
+        const viewport = page.getViewport({ scale: fitScale * scale });
         const context = canvas.getContext('2d');
         if (!context) return;
 
@@ -122,7 +134,7 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
     return () => {
       active = false;
     };
-  }, [pageNum, scale, totalPages, progressStorageKey]);
+  }, [pageNum, scale, totalPages, availableWidth, progressStorageKey]);
 
   const goToPage = (next: number) => {
     if (!totalPages) return;
@@ -138,13 +150,13 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
         : 'bg-[#F5F5F4] text-[#1C1917]';
 
   return (
-    <div className={`min-h-[85vh] rounded-xl border overflow-hidden flex flex-col ${containerThemeClass}`} style={{ borderColor: 'var(--border-hairline)' }}>
+    <div className={`min-w-0 min-h-[85vh] rounded-xl border overflow-hidden flex flex-col ${containerThemeClass}`} style={{ borderColor: 'var(--border-hairline)' }}>
       {/* Reader Top Bar */}
       <div
         className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-3"
         style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-hairline)', color: 'var(--text-ink)' }}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 max-w-full">
           <Link
             href={`/library/${encodeURIComponent(slug)}`}
             className="p-1.5 rounded-lg border hover:opacity-80"
@@ -233,7 +245,7 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
       </div>
 
       {/* Canvas Viewport */}
-      <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start">
+      <div ref={viewportRef} dir="ltr" className="min-w-0 flex-1 overflow-auto p-3 md:p-8">
         {loading && (
           <div className="py-20 text-center space-y-2">
             <p className="font-bold text-base">جاري تجهيز صفحات الكتاب...</p>
@@ -257,7 +269,7 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
         )}
 
         {!loading && !error && (
-          <div className="shadow-2xl rounded overflow-hidden bg-white">
+          <div className="w-max mx-auto shadow-2xl rounded overflow-hidden bg-white">
             <canvas
               ref={canvasRef}
               className={theme === 'dark' ? 'invert hue-rotate-180 contrast-95' : ''}

@@ -73,7 +73,7 @@ export default async function GlobalSearchPage({
         <h1 className="section-page-title font-scripture text-3xl font-bold" style={{ color: 'var(--accent-burgundy)' }}><SectionIcon name="search" />
           البحث الشامل في المنصة
         </h1>
-        <form action="/search" method="GET" className="flex gap-2">
+        <form action="/search" method="GET" className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <input
               type="search"

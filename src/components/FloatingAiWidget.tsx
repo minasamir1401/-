@@ -76,8 +76,6 @@ export function FloatingAiWidget() {
     return null;
   }
 
-  const bottomOffsetClass = track ? 'bottom-24 sm:bottom-20' : 'bottom-5';
-
   const handleSend = async (overrideText?: string) => {
     const prompt = (overrideText ?? input).trim();
     if (!prompt || sending) return;
@@ -120,7 +118,9 @@ export function FloatingAiWidget() {
   };
 
   return (
-    <div className={`fixed left-4 sm:left-6 ${bottomOffsetClass} z-40`}>
+    <div className="ai-widget fixed left-4 sm:left-6 z-40" style={{
+      bottom: `calc(${track ? 'var(--audio-player-height, 128px)' : '0px'} + max(1rem, env(safe-area-inset-bottom)))`,
+    }}>
       {!open ? (
         <button
           type="button"
@@ -147,14 +147,14 @@ export function FloatingAiWidget() {
       ) : (
         <section
           aria-label="نافذة الحوار السريع مع الذكاء الاصطناعي الأرثوذكسي"
-          className="ai-drawer-enter w-[min(93vw,430px)] max-h-[76vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden"
+          className="ai-drawer-enter flex flex-col rounded-2xl border shadow-2xl overflow-hidden"
           style={{
             backgroundColor: 'var(--bg-surface)',
             borderColor: 'var(--accent-gold)',
           }}
         >
           <header
-            className="px-4 py-3 flex items-center justify-between gap-2 text-white"
+            className="shrink-0 px-3 sm:px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-white"
             style={{ backgroundColor: 'var(--accent-burgundy)' }}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -205,7 +205,7 @@ export function FloatingAiWidget() {
           </header>
 
           <div
-            className="px-3 py-2 border-b flex flex-wrap gap-1.5"
+            className="shrink-0 px-3 py-2 border-b flex flex-wrap gap-1.5"
             style={{
               backgroundColor: 'var(--bg-surface-muted)',
               borderColor: 'var(--border-hairline)',
@@ -228,7 +228,7 @@ export function FloatingAiWidget() {
             ))}
           </div>
 
-          <div ref={listRef} className="flex-1 overflow-y-auto p-3 space-y-3 text-sm">
+          <div ref={listRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 space-y-3 text-sm">
             {messages.length === 0 ? (
               <div className="space-y-2.5">
                 <p className="text-xs leading-6" style={{ color: 'var(--text-muted)' }}>
@@ -333,7 +333,7 @@ export function FloatingAiWidget() {
               e.preventDefault();
               void handleSend();
             }}
-            className="p-2.5 border-t flex items-center gap-2"
+            className="shrink-0 p-2.5 border-t flex items-center gap-2"
             style={{
               backgroundColor: 'var(--bg-surface-muted)',
               borderColor: 'var(--border-hairline)',
@@ -345,7 +345,7 @@ export function FloatingAiWidget() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="اكتب سؤالك هنا لـ AI..."
-              className="flex-1 rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1"
+              className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-xs outline-none focus:ring-1"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-hairline)',

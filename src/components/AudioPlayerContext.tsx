@@ -29,12 +29,22 @@ export function useAudioPlayer() {
 
 export function AudioPlayerProvider({ children }: { children: React.ReactNode }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playerRef = useRef<HTMLDivElement | null>(null);
+  const [playerHeight, setPlayerHeight] = useState(128);
   const [track, setTrack] = useState<AudioTrack | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
+    const observer = new ResizeObserver(() => setPlayerHeight(player.getBoundingClientRect().height));
+    observer.observe(player);
+    return () => observer.disconnect();
+  }, [track]);
 
   const playTrack = (next: AudioTrack) => {
     setTrack(next);
@@ -88,7 +98,10 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
   return (
     <AudioPlayerContext.Provider value={{ track, isPlaying, playTrack, togglePlay, closePlayer }}>
-      <div className={`min-h-screen flex flex-col ${track ? 'pb-32 sm:pb-20' : ''}`}>{children}</div>
+      <div className="min-h-screen min-w-0 flex flex-col" style={track ? {
+        paddingBottom: playerHeight,
+        '--audio-player-height': `${playerHeight}px`,
+      } as React.CSSProperties : undefined}>{children}</div>
       <audio
         ref={audioRef}
         onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime)}
@@ -100,13 +113,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       />
       {track && (
         <div
-          className="fixed bottom-0 inset-x-0 z-50 border-t shadow-lg backdrop-blur-md"
+          ref={playerRef}
+          className="audio-player fixed bottom-0 inset-x-0 z-50 border-t shadow-lg backdrop-blur-md"
           style={{
             backgroundColor: 'var(--bg-surface)',
             borderColor: 'var(--border-hairline)',
           }}
         >
-          <div className="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center gap-4">
+          <div className="audio-player-controls max-w-7xl mx-auto px-4 py-3">
             <button
               onClick={togglePlay}
               aria-label={isPlaying ? 'إيقاف مؤقت' : 'تشغيل'}
@@ -124,7 +138,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
               {hasError && <p role="alert" className="text-xs">تعذّر تشغيل التسجيل. <a href={track.mediaUrl} target="_blank" rel="noreferrer" className="underline">افتح الملف من المصدر</a></p>}
             </div>
 
-            <div className="w-full sm:w-64 flex items-center gap-2 text-xs" dir="ltr">
+            <div className="audio-player-seek min-w-0 flex items-center gap-2 text-xs" dir="ltr">
               <span className="tabular-nums">{fmt(progress)}</span>
               <input
                 type="range"
@@ -138,7 +152,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
                   if (audioRef.current) audioRef.current.currentTime = nextTime;
                   setProgress(nextTime);
                 }}
-                className="flex-1 accent-[#7A1E24]"
+                className="min-w-0 w-full flex-1 accent-[#7A1E24]"
               />
               <span className="tabular-nums">{fmt(duration)}</span>
             </div>
@@ -156,7 +170,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
             <button
               onClick={closePlayer}
               aria-label="إغلاق المشغل"
-              className="p-1.5 rounded-md hover:opacity-75"
+              className="audio-player-close p-1.5 rounded-md hover:opacity-75"
               style={{ color: 'var(--text-muted)' }}
             >
               <X className="w-5 h-5" />

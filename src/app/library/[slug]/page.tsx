@@ -87,7 +87,7 @@ export default async function BookDetailPage({
               {book.description}
             </p>
 
-            <div className="grid grid-cols-3 gap-3 pt-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
               <div className="p-3 rounded-lg border" style={{ borderColor: 'var(--border-hairline)' }}>
                 <div style={{ color: 'var(--text-muted)' }}>الصيغة</div>
                 <div className="font-bold mt-0.5">{book.format === 'HTML_CHAPTERS' ? 'فصول نصية' : 'PDF'}</div>

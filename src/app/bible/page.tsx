@@ -63,7 +63,7 @@ export default async function BibleIndexPage({
           اقرأ أسفار العهدين والأسفار القانونية الثانية، وابحث في الآيات، وتصفّح التفاسير الأرثوذكسية المتوفرة حسب الأصحاح.
         </p>
 
-        <form action="/bible" method="GET" className="flex gap-2 max-w-xl">
+        <form action="/bible" method="GET" className="flex flex-col sm:flex-row gap-2 max-w-xl">
           <div className="relative flex-1">
             <input
               type="search"
@@ -87,7 +87,7 @@ export default async function BibleIndexPage({
 
       {searchResults && (
         <section className="card-manuscript p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="font-bold text-lg">
               نتائج البحث عن &quot;{q}&quot; ({searchResults.results.length})
             </h2>

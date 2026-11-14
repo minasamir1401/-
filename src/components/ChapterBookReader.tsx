@@ -87,7 +87,7 @@ export function ChapterBookReader({ slug, title, authorName, chapters, initialCh
       </aside>
 
       <article className="min-w-0 lg:col-span-8 card-manuscript p-6 md:p-8 space-y-5">
-        <div className="flex items-center justify-between gap-4 pb-4 border-b" style={{ borderColor: 'var(--border-hairline)' }}>
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b" style={{ borderColor: 'var(--border-hairline)' }}>
           <h2 className="font-scripture text-2xl font-bold" style={{ color: 'var(--accent-burgundy)' }}>
             {chapterTitle}
           </h2>
