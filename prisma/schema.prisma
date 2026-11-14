@@ -1,0 +1,355 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Testament {
+  OLD
+  DEUTEROCANON
+  NEW
+}
+
+enum BookFormat {
+  PDF
+  HTML_CHAPTERS
+  BOTH
+}
+
+enum BookStatus {
+  PUBLISHED
+  PENDING_REVIEW
+  BROKEN_LINK
+}
+
+enum ExplanationType {
+  COMMENTARY
+  DOGMA
+  RITES
+  PATROLOGY
+  QA
+  SPIRITUAL
+}
+
+enum SermonMediaType {
+  AUDIO_MP3
+  YOUTUBE_VIDEO
+  TEXT
+}
+
+enum ScrapeStrategy {
+  BIBLE_API
+  ARCHIVE_API
+  WP_REST
+  HTML_PARSER
+  RSS_FEED
+}
+
+enum ScrapeJobStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model BibleBook {
+  id              Int                   @id
+  slug            String                @unique
+  osisCode        String                @unique
+  nameAr          String
+  nameEn          String
+  testament       Testament
+  orderIndex      Int                   @unique
+  chaptersCount   Int
+  verses          BibleVerse[]
+  commentaries    BibleCommentary[]
+  apologeticsRefs ApologeticsBibleRef[]
+}
+
+model BibleVerse {
+  id             Int       @id @default(autoincrement())
+  bookId         Int
+  chapter        Int
+  verseNumber    Int
+  textTashkeel   String
+  textNormalized String
+  book           BibleBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, chapter, verseNumber])
+  @@index([bookId, chapter])
+  @@index([textNormalized])
+}
+
+model CommentaryAuthor {
+  id           Int               @id @default(autoincrement())
+  name         String            @unique
+  slug         String            @unique
+  bio          String?
+  commentaries BibleCommentary[]
+}
+
+model BibleCommentary {
+  id          Int              @id @default(autoincrement())
+  authorId    Int
+  bookId      Int
+  chapter     Int
+  title       String
+  contentHtml String
+  sourceName  String
+  sourceUrl   String           @unique
+  createdAt   DateTime         @default(now())
+  author      CommentaryAuthor @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  book        BibleBook        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([bookId, chapter])
+}
+
+model ExplanationCategory {
+  id          Int                  @id @default(autoincrement())
+  name        String
+  slug        String               @unique
+  type        ExplanationType
+  description String?
+  articles    ExplanationArticle[]
+}
+
+model ExplanationArticle {
+  id             Int                 @id @default(autoincrement())
+  categoryId     Int
+  title          String
+  slug           String              @unique
+  summary        String
+  contentHtml    String
+  textNormalized String
+  tags           String[]
+  authorName     String?
+  sourceName     String
+  sourceUrl      String              @unique
+  contentHash    String
+  publishedAt    DateTime            @default(now())
+  viewsCount     Int                 @default(0)
+  category       ExplanationCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+}
+
+model Author {
+  id    Int     @id @default(autoincrement())
+  name  String  @unique
+  slug  String  @unique
+  bio   String?
+  books Book[]
+}
+
+model BookCategory {
+  id    Int    @id @default(autoincrement())
+  name  String
+  slug  String @unique
+  books Book[]
+}
+
+model Book {
+  id             Int           @id @default(autoincrement())
+  title          String
+  slug           String        @unique
+  description    String
+  textNormalized String
+  authorId       Int
+  categoryId     Int
+  coverUrl       String?
+  format         BookFormat    @default(PDF)
+  pageCount      Int?
+  fileSizeBytes  BigInt?
+  pdfSourceUrl   String?
+  driveFileId    String?
+  storageKey     String?
+  sourceSite     String
+  sourcePageUrl  String        @unique
+  downloadsCount Int           @default(0)
+  viewsCount     Int           @default(0)
+  status         BookStatus    @default(PUBLISHED)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  author         Author        @relation(fields: [authorId], references: [id])
+  category       BookCategory  @relation(fields: [categoryId], references: [id])
+  chapters       BookChapter[]
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([status])
+}
+
+model BookChapter {
+  id            Int    @id @default(autoincrement())
+  bookId        Int
+  chapterNumber Int
+  title         String
+  contentHtml   String
+  book          Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, chapterNumber])
+}
+
+model Preacher {
+  id        Int            @id @default(autoincrement())
+  name      String         @unique
+  slug      String         @unique
+  bio       String?
+  avatarUrl String?
+  sermons   Sermon[]
+  series    SermonSeries[]
+}
+
+model SermonSeries {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  preacherId  Int
+  description String?
+  preacher    Preacher @relation(fields: [preacherId], references: [id], onDelete: Cascade)
+  sermons     Sermon[]
+}
+
+model Sermon {
+  id              Int             @id @default(autoincrement())
+  title           String
+  slug            String          @unique
+  description     String?
+  textNormalized  String
+  preacherId      Int
+  seriesId        Int?
+  mediaType       SermonMediaType
+  mediaUrl        String
+  youtubeVideoId  String?
+  durationSeconds Int?
+  transcriptHtml  String?
+  sourceName      String
+  sourceUrl       String          @unique
+  publishedAt     DateTime        @default(now())
+  playsCount      Int             @default(0)
+  preacher        Preacher        @relation(fields: [preacherId], references: [id])
+  series          SermonSeries?   @relation(fields: [seriesId], references: [id])
+
+  @@index([preacherId])
+  @@index([mediaType])
+}
+
+model DailyLiturgyCache {
+  gregorianDate  String   @id
+  copticDate     String?
+  katamerosJson  Json
+  synaxariumJson Json?
+  fetchedAt      DateTime @default(now())
+}
+
+model ScrapeSource {
+  id          Int            @id @default(autoincrement())
+  key         String         @unique
+  name        String
+  baseUrl     String
+  strategy    ScrapeStrategy
+  rateLimitMs Int            @default(1200)
+  isEnabled   Boolean        @default(true)
+  lastRunAt   DateTime?
+  logs        ScrapeJobLog[]
+}
+
+model ScrapeJobLog {
+  id           Int             @id @default(autoincrement())
+  sourceId     Int
+  status       ScrapeJobStatus
+  itemsFound   Int             @default(0)
+  itemsAdded   Int             @default(0)
+  itemsSkipped Int             @default(0)
+  errorDetails String?
+  startedAt    DateTime        @default(now())
+  finishedAt   DateTime?
+  source       ScrapeSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+}
+
+model ApologeticsEntry {
+  id                  Int                   @id @default(autoincrement())
+  slug                String                @unique
+  domain              String
+  domainAr            String
+  question            String
+  shortSummary        String                @db.Text
+  answerHtml          String                @db.Text
+  normalizedIndex     String                @db.Text
+  relatedBookSlugs    Json?
+  relatedArticleSlugs Json?
+  sourcesJson         Json?
+  orderIndex          Int                   @default(0)
+  createdAt           DateTime              @default(now())
+  bibleRefs           ApologeticsBibleRef[]
+
+  @@index([domain, orderIndex])
+}
+
+model ApologeticsBibleRef {
+  id         Int              @id @default(autoincrement())
+  entryId    Int
+  bookId     Int
+  chapter    Int
+  verseLabel String?
+  entry      ApologeticsEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  book       BibleBook        @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, bookId, chapter])
+  @@index([bookId, chapter])
+}
+
+model SynaxariumEntry {
+  id              Int      @id @default(autoincrement())
+  slug            String   @unique
+  copticMonth     Int
+  copticDay       Int
+  monthNameAr     String
+  entryOrder      Int      @default(1)
+  saintTitle      String
+  summary         String?  @db.Text
+  contentHtml     String   @db.Text
+  normalizedIndex String   @db.Text
+  sourceUrl       String
+  createdAt       DateTime @default(now())
+
+  @@index([copticMonth, copticDay, entryOrder])
+}
+
+model UserQuestion {
+  id           Int      @id @default(autoincrement())
+  senderName   String
+  senderEmail  String?
+  category     String
+  subject      String
+  message      String   @db.Text
+  referenceUrl String?
+  status       String   @default("PENDING")
+  createdAt    DateTime @default(now())
+
+  @@index([status, createdAt])
+}
+
+model AiApiKey {
+  id            Int       @id @default(autoincrement())
+  label         String
+  apiKey        String    @unique
+  maskedKey     String
+  source        String    @default("MANUAL")
+  isActive      Boolean   @default(true)
+  requestsCount Int       @default(0)
+  successCount  Int       @default(0)
+  errorCount    Int       @default(0)
+  lastStatus    String?
+  lastError     String?   @db.Text
+  lastUsedAt    DateTime?
+  cooldownUntil DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([isActive, id])
+}

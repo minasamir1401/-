@@ -1,0 +1,87 @@
+[
+  {
+    "id": "questions",
+    "title": "كتب الرد على اعتراضات غير المسيحيين",
+    "intro": "ابدأ بالسؤال نفسه، ثم ارجع إلى سياق النص وحجج المؤلف ومراجعه.",
+    "books": [
+      {
+        "title": "سنوات مع أسئلة الناس: أسئلة خاصة بالكتاب المقدس",
+        "author": "البابا شنودة الثالث",
+        "description": "إجابات مباشرة عن أسئلة تتعلق بآيات ومواضع يصعب فهمها.",
+        "url": "https://popeshenouda.org.eg/سنوات-مع-أسئلة-الناس-أسئلة-خاصة-بالكتا/",
+        "pdf": "https://cdn.popeshenouda.org.eg/Books/سنوات مع اسئلة الناس - أسئلة خاصة بالكتاب المقدس/سنوات مع اسئلة الناس - أسئلة خاصة بالكتاب المقدس.pdf",
+        "slug": "bible-questions-shenouda"
+      },
+      {
+        "title": "الإنجيل: كيف كُتب؟ وكيف وصل إلينا؟",
+        "author": "القمص عبد المسيح بسيط أبو الخير",
+        "description": "يتتبع تدوين الأناجيل والشهادات المبكرة لها وانتقال نصها.",
+        "url": "https://st-takla.org/Full-Free-Coptic-Books/FreeCopticBooks-012-Father-Abdel-Messih-Basiet-Abo-El-Kheir/006-Al-Engil-Kayfa-Koteb/The-Holy-Bible_Writing-n-Reaching-Us__000-index.html",
+        "slug": "gospel-writing-and-transmission"
+      },
+      {
+        "title": "أسئلة حول ألوهية المسيح",
+        "author": "حلمي القمص يعقوب",
+        "description": "إجابات على اعتراضات بشأن لاهوت المسيح وقراءة الآيات التي تُستشهد بها في النقاش.",
+        "url": "https://st-takla.org/books/helmy-elkommos/divinity-of-christ/index.html",
+        "slug": "questions-on-christs-divinity"
+      },
+      {
+        "title": "مدارس النقد والتشكيك والرد عليها: مقدمة للنقد الكتابي",
+        "author": "حلمي القمص يعقوب",
+        "description": "مدخل لفهم مدارس النقد وأسئلتها قبل الانتقال إلى الاعتراضات على الأسفار.",
+        "url": "https://st-takla.org/books/helmy-elkommos/biblical-criticism/index1.html",
+        "slug": "introduction-to-biblical-criticism"
+      },
+      {
+        "title": "إذا كان المسيح إلهًا فكيف كان يتقدم في الحكمة والقامة؟",
+        "author": "القمص عبد المسيح بسيط أبو الخير",
+        "description": "يتناول السؤال عن نموّ المسيح في الحكمة والقامة وعلاقته بفهم التجسد.",
+        "url": "https://st-takla.org/Full-Free-Coptic-Books/FreeCopticBooks-012-Father-Abdel-Messih-Basiet-Abo-El-Kheir/008-Yatakadam-Fi-Al-Hekma-Wal-Kama/Growing-in-Wisdom__00-index.html",
+        "slug": "growing-in-wisdom"
+      }
+    ]
+  },
+  {
+    "id": "orthodox-faith",
+    "title": "كتب الدفاع عن العقيدة الأرثوذكسية",
+    "intro": "مراجع تبدأ بشخص المسيح، ثم تنتقل إلى الخلاص ونقاط الخلاف العقائدي.",
+    "books": [
+      {
+        "title": "لاهوت المسيح",
+        "author": "البابا شنودة الثالث",
+        "description": "شواهد كتابية يُستند إليها في شرح الإيمان بلاهوت المسيح.",
+        "url": "https://st-takla.org/Full-Free-Coptic-Books/His-Holiness-Pope-Shenouda-III-Books-Online/13-Lahout-El-Masi7/Divinity-of-Christ-00-index.html",
+        "slug": "لاهوت-المسيح-البابا-شنودة-الثالث"
+      },
+      {
+        "title": "طبيعة المسيح",
+        "author": "البابا شنودة الثالث",
+        "description": "شرح الإيمان القبطي الأرثوذكسي باتحاد اللاهوت والناسوت في المسيح.",
+        "url": "https://st-takla.org/Full-Free-Coptic-Books/His-Holiness-Pope-Shenouda-III-Books-Online/12-Tabi3at-Al-Maseeh/Nature-of-Christ_00-index.html",
+        "slug": "طبيعة-المسيح-البابا-شنودة-الثالث"
+      },
+      {
+        "title": "الخلاص في المفهوم الأرثوذكسي",
+        "author": "البابا شنودة الثالث",
+        "description": "دور الفداء والإيمان والتوبة والأسرار في فهم الخلاص.",
+        "url": "https://st-takla.org/Full-Free-Coptic-Books/His-Holiness-Pope-Shenouda-III-Books-Online/33-El-Khalas-Fel-Mafhoum-El-Orsozoksy/Salvation-in-the-Orthodox-Concept-00-index.html",
+        "slug": "orthodox-salvation"
+      },
+      {
+        "title": "اللاهوت المقارن، الجزء الأول",
+        "author": "البابا شنودة الثالث",
+        "description": "مقارنة عقائدية في موضوعات مثل التقليد والشفاعة والمعمودية.",
+        "url": "https://st-takla.org/Full-Free-Coptic-Books/His-Holiness-Pope-Shenouda-III-Books-Online/31-Lahout-Mokaran-1/Comparative-Theology-00-index.html",
+        "slug": "comparative-theology-one"
+      },
+      {
+        "title": "بدع حديثة",
+        "author": "البابا شنودة الثالث",
+        "description": "مناقشة تعاليم خلافية معاصرة، منها مسائل تتعلق بالفداء والعدل الإلهي.",
+        "url": "https://st-takla.org/books/pope-sheounda-iii/new-heresies/index.html",
+        "slug": "modern-heresies"
+      }
+    ]
+  }
+]
