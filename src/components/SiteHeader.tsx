@@ -70,7 +70,7 @@ export function SiteHeader() {
           <span className="site-brand-mark">
             <SectionArtwork name="beacon" className="w-7 h-7" size={64} />
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <strong>المنارة الأرثوذكسية</strong>
             <small>الكتاب المقدس • المكتبة • التفاسير • العظات</small>
           </div>

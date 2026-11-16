@@ -99,7 +99,7 @@ export function NavbarOfflineMenu() {
           <CloudDownload className="w-4 h-4 shrink-0" aria-hidden="true" />
         )}
         <span className="hidden sm:inline">{desktopLabel}</span>
-        <span className="sm:hidden text-[0.72rem]">{mobileLabel}</span>
+        <span className="sm:hidden navbar-offline-mobile-label">{mobileLabel}</span>
       </button>
 
       {open && (
