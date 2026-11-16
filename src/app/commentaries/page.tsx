@@ -2,8 +2,17 @@ import Link from 'next/link';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
 import { fetchServerApi, queryString, sectionHref } from '@/lib/api';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata = buildPageMetadata({
+  title: 'فهرس تفاسير الكتاب المقدس الآبائية',
+  description:
+    'فهرس منظم لتفاسير وشروحات أسفار العهد الجديد والعهد القديم والأسفار القانونية الثانية أصحاحاً بأصحاح بحسب التعليم الأرثوذكسي.',
+  path: '/commentaries',
+  keywords: ['تفاسير الكتاب المقدس', 'تفسير القمص تادرس يعقوب', 'تفسير أنطونيوس فكري', 'شروحات آبائية'],
+});
 
 interface CommentaryBooksRes {
   books: Array<{

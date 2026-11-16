@@ -1,9 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, Download } from 'lucide-react';
+import { JsonLd } from '@/components/JsonLd';
 import { SectionIcon } from '@/components/SectionIcon';
 import { SermonPlayButton } from '@/components/SermonPlayButton';
 import { ApiError, fetchServerApi, formatDuration } from '@/lib/api';
+import {
+  buildBreadcrumbJsonLd,
+  buildPageMetadata,
+  buildProfileJsonLd,
+  resolveRuntimeOrigin,
+} from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,31 +34,75 @@ interface PreacherProfileRes {
   }>;
 }
 
-export default async function PreacherDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug: rawSlug } = await params;
+function displayPreacherName(name: string): string {
+  return name === 'Father Makary Younan__ابونا مكاري' ? 'القمص مكاري يونان' : name;
+}
+
+async function loadPreacherProfile(rawSlug: string): Promise<PreacherProfileRes> {
   let slug: string;
   try {
     slug = decodeURIComponent(rawSlug);
   } catch {
     notFound();
   }
-  let data: PreacherProfileRes;
 
   try {
-    data = await fetchServerApi<PreacherProfileRes>(`/api/preachers/${encodeURIComponent(slug)}`, 60);
+    return await fetchServerApi<PreacherProfileRes>(`/api/preachers/${encodeURIComponent(slug)}`, 60);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { preacher, sermons } = await loadPreacherProfile(slug);
+  const name = displayPreacherName(preacher.name);
+  return buildPageMetadata({
+    title: `عظات وتأملات ${name} (${sermons.length})`,
+    description: preacher.bio || `استمع وحمّل عظات وتأملات ${name} الصوتية في مكتبة المنارة الأرثوذكسية (${sermons.length} عظة).`,
+    path: `/preachers/${encodeURIComponent(preacher.slug)}`,
+    type: 'profile',
+    keywords: [name, `عظات ${name}`, 'العظات الصوتية القبطية'],
+  });
+}
+
+export default async function PreacherDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug: rawSlug } = await params;
+  const [data, origin] = await Promise.all([
+    loadPreacherProfile(rawSlug),
+    resolveRuntimeOrigin(),
+  ]);
 
   const { preacher, sermons } = data;
+  const preacherName = displayPreacherName(preacher.name);
+  const preacherPath = `/preachers/${encodeURIComponent(preacher.slug)}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(origin, [
+            { name: 'الرئيسية', path: '/' },
+            { name: 'العظات الصوتية', path: '/sermons' },
+            { name: preacherName, path: preacherPath },
+          ]),
+          buildProfileJsonLd(origin, {
+            name: preacherName,
+            description: preacher.bio || `عظات وتأملات ${preacherName} (${sermons.length} عظة)`,
+            path: preacherPath,
+            jobTitle: 'واعظ ومعلم كنسي قبطي أرثوذكسي',
+          }),
+        ]}
+      />
       <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
         <div className="flex items-center gap-2">
           <Link href="/" className="hover:underline">الرئيسية</Link>

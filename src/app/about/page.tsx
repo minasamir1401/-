@@ -1,6 +1,15 @@
 import Link from 'next/link';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
+import { buildPageMetadata } from '@/lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'عن المنارة الأرثوذكسية ومنهجية العمل',
+  description:
+    'تعرف على رسالة منصة المنارة الأرثوذكسية ومنهجية جمع وتوثيق الكتاب المقدس والتفاسير الآبائية والكتب القبطية والموسوعة الدفاعية.',
+  path: '/about',
+  keywords: ['عن المنارة الأرثوذكسية', 'مصادر قبطية أرثوذكسية', 'منهجية التوثيق الكنسي'],
+});
 
 export default function AboutPage() {
   return (

@@ -2,6 +2,15 @@ import Link from 'next/link';
 import { OrthodoxAiStudio } from '@/components/OrthodoxAiStudio';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
+import { buildPageMetadata } from '@/lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'المرشد الأرثوذكسي بالذكاء الاصطناعي',
+  description:
+    'محاور ومساعد عقيدي ودفاعي قبطي أرثوذكسي مدعوم بمكتبة الكتاب المقدس وموسوعة الرد على الشبهات والمكتبة العربية للرد الموثق.',
+  path: '/ai',
+  keywords: ['المرشد الأرثوذكسي', 'اسأل AI الأرثوذكسي', 'مساعد لاهوتي ودفاعي'],
+});
 
 export default function OrthodoxAiPage() {
   return (

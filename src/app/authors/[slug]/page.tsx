@@ -1,8 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, BookOpen, Download } from 'lucide-react';
+import { JsonLd } from '@/components/JsonLd';
 import { SectionIcon } from '@/components/SectionIcon';
 import { ApiError, fetchServerApi, formatBytes, getPublicApiBase } from '@/lib/api';
+import {
+  buildBreadcrumbJsonLd,
+  buildPageMetadata,
+  buildProfileJsonLd,
+  resolveRuntimeOrigin,
+} from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,32 +33,70 @@ interface AuthorProfileRes {
   }>;
 }
 
-export default async function AuthorDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug: rawSlug } = await params;
+async function loadAuthorProfile(rawSlug: string): Promise<AuthorProfileRes> {
   let slug: string;
   try {
     slug = decodeURIComponent(rawSlug);
   } catch {
     notFound();
   }
-  let data: AuthorProfileRes;
 
   try {
-    data = await fetchServerApi<AuthorProfileRes>(`/api/authors/${encodeURIComponent(slug)}`, 60);
+    return await fetchServerApi<AuthorProfileRes>(`/api/authors/${encodeURIComponent(slug)}`, 60);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { author, books } = await loadAuthorProfile(slug);
+  return buildPageMetadata({
+    title: `${author.name} - مؤلفات وكتب (${books.length})`,
+    description: author.bio || `تصفح واقرأ كتب ومؤلفات ${author.name} المتوفرة في مكتبة المنارة الأرثوذكسية (${books.length} كتاباً).`,
+    path: `/authors/${encodeURIComponent(author.slug)}`,
+    type: 'profile',
+    keywords: [author.name, `كتب ${author.name}`, 'المكتبة القبطية'],
+  });
+}
+
+export default async function AuthorDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug: rawSlug } = await params;
+  const [data, origin] = await Promise.all([
+    loadAuthorProfile(rawSlug),
+    resolveRuntimeOrigin(),
+  ]);
 
   const { author, books } = data;
   const publicApi = getPublicApiBase();
+  const authorPath = `/authors/${encodeURIComponent(author.slug)}`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(origin, [
+            { name: 'الرئيسية', path: '/' },
+            { name: 'المكتبة', path: '/library' },
+            { name: author.name, path: authorPath },
+          ]),
+          buildProfileJsonLd(origin, {
+            name: author.name,
+            description: author.bio || `مؤلف في مكتبة المنارة الأرثوذكسية (${books.length} كتاباً)`,
+            path: authorPath,
+            jobTitle: 'مؤلف وباحث لاهوتي قبطي أرثوذكسي',
+          }),
+        ]}
+      />
       <div className="flex items-center justify-between text-xs" style={{ color: 'var(--text-muted)' }}>
         <div className="flex items-center gap-2">
           <Link href="/" className="hover:underline">الرئيسية</Link>

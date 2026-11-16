@@ -3,8 +3,26 @@ import Link from 'next/link';
 import { BookOpen, Download, Search } from 'lucide-react';
 import { fetchServerApi, formatBytes, queryString, sectionHref } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const q = queryString(params.q);
+  return buildPageMetadata({
+    title: q ? `البحث في المكتبة القبطية: ${q}` : 'المكتبة القبطية الأرثوذكسية للكتب الرقمية',
+    description:
+      'تصفح واقرأ أكثر من 120 كتاباً ومخطوطة قبطية أرثوذكسية بالعربية مباشرة داخل الموقع أو حمّلها بصيغة PDF في العقيدة والآباء وتاريخ الكنيسة.',
+    path: '/library',
+    keywords: ['المكتبة القبطية', 'تحميل كتب أرثوذكسية PDF', 'قراءة كتب مسيحية', 'كتب آباء الكنيسة'],
+    noIndex: Boolean(q),
+  });
+}
 
 interface LibraryResponse {
   items: Array<{

@@ -4,8 +4,40 @@ import { Pagination } from '@/components/Pagination';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
 import { fetchServerApi, queryString, sectionHref, type ApologeticsEntryDto } from '@/lib/api';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+const DOMAIN_SEO_TITLES: Record<string, string> = {
+  'trinity-christology': 'الرد على شبهات الثالوث ولاهوت المسيح',
+  scripture: 'الرد على شبهات الكتاب المقدس والمخطوطات والأبوكريفا',
+  'incarnation-salvation': 'الرد على شبهات التجسد والفداء والصليب والقيامة',
+  'atheism-science': 'الرد على الإلحاد وبراهين وجود الله والعلم',
+  'sectarian-heresies': 'اللاهوت المقارن والرد على البدع الحديثة',
+  'church-history-patristics': 'التاريخ الكنسي والمجامع المسكونية وأقوال الآباء',
+  'comparative-religions': 'مقارنة الأديان والشبهات العامة',
+};
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const domain = queryString(params.domain);
+  const q = queryString(params.q);
+  const domainTitle = DOMAIN_SEO_TITLES[domain];
+  return buildPageMetadata({
+    title: q
+      ? `البحث في الشبهات: ${q}`
+      : domainTitle || 'موسوعة الرد على الشبهات واللاهوت الدفاعي الأرثوذكسي',
+    description:
+      'موسوعة دفاعية أرثوذكسية موثقة بالكتاب المقدس وأقوال الآباء والتاريخ الكنسي للرد على الشبهات اللاهوتية والكتابية وأهم 20 كتاباً دفاعياً.',
+    path: !q && domainTitle ? `/apologetics?domain=${encodeURIComponent(domain)}` : '/apologetics',
+    keywords: ['الرد على الشبهات', 'اللاهوت الدفاعي', 'الثالوث ولاهوت المسيح', 'كتب الدفاعيات الأرثوذكسية'],
+    noIndex: Boolean(q),
+  });
+}
 
 interface ApologeticsListRes {
   domains: Array<{ key: string; label: string; count: number }>;
@@ -288,41 +320,41 @@ export default async function ApologeticsPage({
           </div>
         </div>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2">
           {data.items.map((item) => (
-            <article key={item.id} className="card-manuscript p-6 flex flex-col justify-between gap-4">
-              <div className="space-y-3">
+            <article key={item.id} className="card-manuscript p-6 md:p-7 flex flex-col justify-between gap-5">
+              <div className="space-y-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span
-                    className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                    className="text-xs px-3 py-1 rounded-full font-bold"
                     style={{ backgroundColor: 'var(--bg-surface-muted)', color: 'var(--accent-burgundy)' }}
                   >
                     {item.domainAr}
                   </span>
                   {item.bibleRefs && item.bibleRefs.length > 0 && (
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {item.bibleRefs.length} شواهد كتابية
+                    <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+                      {item.bibleRefs.length} شواهد كتابية موثقة
                     </span>
                   )}
                 </div>
 
-                <h2 className="font-scripture text-xl font-bold leading-snug">
+                <h2 className="font-scripture text-xl md:text-[1.35rem] font-bold leading-relaxed">
                   <Link href={`/apologetics/${encodeURIComponent(item.slug)}`} className="hover:underline">
                     {item.question}
                   </Link>
                 </h2>
 
-                <p className="text-sm leading-7" style={{ color: 'var(--text-muted)' }}>
+                <p className="text-sm md:text-[0.95rem] leading-8" style={{ color: 'var(--text-muted)' }}>
                   {item.shortSummary}
                 </p>
 
                 {item.bibleRefs && item.bibleRefs.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {item.bibleRefs.slice(0, 4).map((ref, idx) => (
+                    {item.bibleRefs.slice(0, 5).map((ref, idx) => (
                       <Link
                         key={`${ref.book.slug}-${ref.chapter}-${idx}`}
                         href={`/bible/${ref.book.slug}/${ref.chapter}`}
-                        className="text-xs px-2 py-0.5 rounded border hover:underline"
+                        className="text-xs px-2.5 py-1 rounded border hover:underline"
                         style={{ borderColor: 'var(--border-hairline)', backgroundColor: 'var(--bg-parchment)' }}
                       >
                         {ref.verseLabel || `${ref.book.nameAr} ${ref.chapter}`}
@@ -332,14 +364,14 @@ export default async function ApologeticsPage({
                 )}
               </div>
 
-              <div className="pt-2 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-hairline)' }}>
+              <div className="pt-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-hairline)' }}>
                 <Link
                   href={`/apologetics/${encodeURIComponent(item.slug)}`}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold hover:underline"
+                  className="inline-flex items-center gap-2 text-sm font-bold hover:underline"
                   style={{ color: 'var(--accent-burgundy)' }}
                 >
                   <BookOpen className="w-4 h-4" />
-                  <span>اقرأ الرد التفصيلي الموثق</span>
+                  <span>اقرأ التبسيط والرد الموثق كاملاً</span>
                 </Link>
               </div>
             </article>

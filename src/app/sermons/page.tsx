@@ -4,8 +4,26 @@ import { Download, Search } from 'lucide-react';
 import { fetchServerApi, formatDuration, queryString, sectionHref } from '@/lib/api';
 import { SermonPlayButton } from '@/components/SermonPlayButton';
 import { Pagination } from '@/components/Pagination';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const q = queryString(params.q);
+  return buildPageMetadata({
+    title: q ? `نتائج البحث في العظات: ${q}` : 'مكتبة العظات والتأملات الصوتية',
+    description:
+      'استمع وحمّل مئات العظات والتأملات الصوتية والروحية لأباء الكنيسة القبطية الأرثوذكسية في الكتاب المقدس والعقيدة والحياة الروحية.',
+    path: '/sermons',
+    keywords: ['عظات قبطية', 'تأملات صوتية', 'عظات البابا شنودة', 'القمص مكاري يونان'],
+    noIndex: Boolean(q),
+  });
+}
 
 interface SermonsRes {
   items: Array<{

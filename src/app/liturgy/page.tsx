@@ -5,8 +5,17 @@ import { fetchServerApi, queryString, type SynaxariumEntryDto } from '@/lib/api'
 import { AgpeyaViewer } from '@/components/AgpeyaViewer';
 import { AnnualOccasions, OccasionCard, SynaxariumSource } from '@/components/ChurchOccasions';
 import { cairoToday, churchHymns, copticDateLabel, georgeCelebration, isCalendarDate, occasionsForDate, synaxariumReadings } from '@/lib/church-calendar';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata = buildPageMetadata({
+  title: 'القطمارس اليومي والخولاجي والأجبية والتسبحة',
+  description:
+    'تابع قراءات القطمارس اليومي بحسب التقويم القبطي، وصلوات الأجبية السبع، والخولاجي المقدس، والإبصلمودية وتسبحة نصف الليل.',
+  path: '/liturgy',
+  keywords: ['القطمارس اليومي', 'الأجبية القبطية', 'الخولاجي المقدس', 'التسبحة القبطية', 'قراءات اليوم'],
+});
 
 interface LiturgicalBookItem {
   id: number;

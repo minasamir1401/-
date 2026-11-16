@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ApiError, fetchServerApi } from '@/lib/api';
 import { PdfBookReader } from '@/components/PdfBookReader';
 import { ChapterBookReader } from '@/components/ChapterBookReader';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,10 +12,36 @@ interface BookReaderData {
   book: {
     slug: string;
     title: string;
+    description?: string;
     format: 'PDF' | 'HTML_CHAPTERS' | 'BOTH';
     author: { name: string };
     chapters: Array<{ chapterNumber: number; title: string }>;
   };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug: rawSlug } = await params;
+  let slug: string;
+  try { slug = decodeURIComponent(rawSlug); } catch { notFound(); }
+
+  try {
+    const { book } = await fetchServerApi<BookReaderData>(`/api/books/${encodeURIComponent(slug)}`, 0);
+    return buildPageMetadata({
+      title: `قراءة كتاب ${book.title} - ${book.author.name}`,
+      description: book.description || `قراءة كتاب ${book.title} تأليف ${book.author.name} مباشرة عبر قارئ المنارة الأرثوذكسية.`,
+      path: `/library/${encodeURIComponent(book.slug)}/read`,
+      type: 'book',
+      noIndex: book.format !== 'HTML_CHAPTERS',
+      keywords: [book.title, book.author.name, 'قراءة كتب أرثوذكسية'],
+    });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
 }
 
 export default async function BookReadPage({

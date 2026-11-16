@@ -1,8 +1,11 @@
+import { cache } from 'react';
 import { ApiError } from './api-client';
 import { dispatchServerGet } from './server/dispatch';
 import { RouteError } from './server/route-error';
 
 export * from './api-client';
+
+const cachedDispatchServerGet = cache(async (path: string) => dispatchServerGet(path));
 
 export function getServerApiBase(): string {
   return (process.env.API_INTERNAL_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/$/, '');
@@ -21,7 +24,7 @@ export async function fetchServerApi<T>(path: string, revalidate = 60): Promise<
   }
 
   try {
-    return (await dispatchServerGet(path)) as T;
+    return (await cachedDispatchServerGet(path)) as T;
   } catch (err) {
     if (err instanceof RouteError) {
       throw new ApiError(err.status, path);

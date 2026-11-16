@@ -1,8 +1,15 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowRight, BookOpen, ExternalLink, MessageSquarePlus } from 'lucide-react';
+import { JsonLd } from '@/components/JsonLd';
 import { SectionIcon } from '@/components/SectionIcon';
 import { ApiError, fetchServerApi, type ApologeticsEntryDto } from '@/lib/api';
+import {
+  buildArticleJsonLd,
+  buildBreadcrumbJsonLd,
+  buildPageMetadata,
+  resolveRuntimeOrigin,
+} from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,32 +33,72 @@ interface ApologeticsDetailRes {
   siblingEntries: Array<{ slug: string; question: string; domainAr: string }>;
 }
 
-export default async function ApologeticsDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug: rawSlug } = await params;
+async function loadApologeticsDetail(rawSlug: string): Promise<ApologeticsDetailRes> {
   let slug: string;
   try {
     slug = decodeURIComponent(rawSlug);
   } catch {
     notFound();
   }
-  let data: ApologeticsDetailRes;
 
   try {
-    data = await fetchServerApi<ApologeticsDetailRes>(`/api/apologetics/${encodeURIComponent(slug)}`, 60);
+    return await fetchServerApi<ApologeticsDetailRes>(`/api/apologetics/${encodeURIComponent(slug)}`, 60);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { entry } = await loadApologeticsDetail(slug);
+  return buildPageMetadata({
+    title: `${entry.question} - ${entry.domainAr}`,
+    description: entry.shortSummary,
+    path: `/apologetics/${encodeURIComponent(entry.slug)}`,
+    type: 'article',
+    keywords: [entry.question, entry.domainAr, 'الرد على الشبهات', 'اللاهوت الدفاعي الأرثوذكسي'],
+  });
+}
+
+export default async function ApologeticsDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug: rawSlug } = await params;
+  const [data, origin] = await Promise.all([
+    loadApologeticsDetail(rawSlug),
+    resolveRuntimeOrigin(),
+  ]);
 
   const { entry, relatedBooks, relatedArticles, siblingEntries } = data;
   const sources = Array.isArray(entry.sourcesJson) ? entry.sourcesJson : [];
+  const entryPath = `/apologetics/${encodeURIComponent(entry.slug)}`;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(origin, [
+            { name: 'الرئيسية', path: '/' },
+            { name: 'الرد على الشبهات', path: '/apologetics' },
+            { name: entry.domainAr, path: `/apologetics?domain=${encodeURIComponent(entry.domain)}` },
+            { name: entry.question, path: entryPath },
+          ]),
+          buildArticleJsonLd(origin, {
+            headline: entry.question,
+            description: entry.shortSummary,
+            path: entryPath,
+            section: entry.domainAr,
+            keywords: [entry.domainAr, 'الرد على الشبهات', 'الدفاعيات الأرثوذكسية'],
+          }),
+        ]}
+      />
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/" className="hover:underline">الرئيسية</Link>
@@ -69,27 +116,27 @@ export default async function ApologeticsDetailPage({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12 items-start">
-        <article className="lg:col-span-8 card-manuscript p-6 md:p-8 space-y-6">
-          <div className="space-y-3 border-b pb-5" style={{ borderColor: 'var(--border-hairline)' }}>
+        <article className="lg:col-span-8 card-manuscript p-6 md:p-9 space-y-6">
+          <div className="space-y-4 border-b pb-6" style={{ borderColor: 'var(--border-hairline)' }}>
             <span
               className="inline-block text-xs px-3 py-1 rounded-full font-bold"
               style={{ backgroundColor: 'var(--bg-surface-muted)', color: 'var(--accent-burgundy)' }}
             >
               {entry.domainAr}
             </span>
-            <h1 className="font-scripture text-2xl md:text-4xl font-bold leading-snug" style={{ color: 'var(--heading-ink)' }}>
+            <h1 className="font-scripture text-2xl md:text-4xl font-bold leading-relaxed" style={{ color: 'var(--heading-ink)' }}>
               {entry.question}
             </h1>
-            <div className="rounded-lg p-4 border" style={{ borderColor: 'var(--accent-gold)', backgroundColor: 'var(--bg-parchment)' }}>
-              <h2 className="text-xs font-bold mb-1" style={{ color: 'var(--accent-burgundy)' }}>
-                الخلاصة الأرثوذكسية
+            <div className="rounded-xl p-4 md:p-5 border" style={{ borderColor: 'var(--accent-gold)', backgroundColor: 'var(--bg-parchment)' }}>
+              <h2 className="text-xs md:text-sm font-bold mb-1.5" style={{ color: 'var(--accent-burgundy)' }}>
+                الخلاصة المبسطة والرد المباشر
               </h2>
-              <p className="text-sm leading-7 font-medium">{entry.shortSummary}</p>
+              <p className="text-sm md:text-base leading-8 font-medium">{entry.shortSummary}</p>
             </div>
           </div>
 
           <div
-            className="prose-arabic text-base md:text-lg leading-loose"
+            className="prose-arabic text-base md:text-[1.08rem] leading-loose"
             dangerouslySetInnerHTML={{ __html: entry.answerHtml }}
           />
 
@@ -98,19 +145,32 @@ export default async function ApologeticsDetailPage({
               <h2 className="font-scripture text-xl font-bold" style={{ color: 'var(--accent-burgundy)' }}>
                 المراجع والمصادر الكنسية الموثقة
               </h2>
-              <ul className="space-y-2 text-sm">
+              <ul className="space-y-2.5 text-sm">
                 {sources.map((src, idx) => (
                   <li key={idx}>
-                    <a
-                      href={src.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 underline hover:opacity-80"
-                      style={{ color: 'var(--accent-burgundy)' }}
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                      <span>{src.title}</span>
-                    </a>
+                    {src.url?.startsWith('http') ? (
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 underline hover:opacity-80"
+                        style={{ color: 'var(--accent-burgundy)' }}
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                        <span>{src.title}</span>
+                      </a>
+                    ) : src.url ? (
+                      <Link
+                        href={src.url}
+                        className="inline-flex items-center gap-1.5 underline hover:opacity-80"
+                        style={{ color: 'var(--accent-burgundy)' }}
+                      >
+                        <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                        <span>{src.title}</span>
+                      </Link>
+                    ) : (
+                      <span className="font-medium">{src.title}</span>
+                    )}
                   </li>
                 ))}
               </ul>

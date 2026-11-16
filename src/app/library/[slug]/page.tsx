@@ -1,8 +1,15 @@
+import { JsonLd } from '@/components/JsonLd';
 import { SectionIcon } from '@/components/SectionIcon';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookOpen, Download, ExternalLink } from 'lucide-react';
 import { ApiError, fetchServerApi, formatBytes } from '@/lib/api';
+import {
+  buildBookJsonLd,
+  buildBreadcrumbJsonLd,
+  buildPageMetadata,
+  resolveRuntimeOrigin,
+} from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,27 +33,69 @@ interface BookDetailResponse {
   };
 }
 
+async function loadBookDetail(rawSlug: string): Promise<BookDetailResponse> {
+  let slug: string;
+  try { slug = decodeURIComponent(rawSlug); } catch { notFound(); }
+
+  try {
+    return await fetchServerApi<BookDetailResponse>(`/api/books/${encodeURIComponent(slug)}`, 0);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const { book } = await loadBookDetail(slug);
+  return buildPageMetadata({
+    title: `كتاب ${book.title} - ${book.author.name}`,
+    description: book.description || `قراءة وتحميل كتاب ${book.title} تأليف ${book.author.name} في قسم ${book.category.name}.`,
+    path: `/library/${encodeURIComponent(book.slug)}`,
+    type: 'book',
+    image: book.coverUrl,
+    keywords: [book.title, book.author.name, book.category.name, 'تحميل كتاب أرثوذكسي'],
+  });
+}
+
 export default async function BookDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug: rawSlug } = await params;
-  let slug: string;
-  try { slug = decodeURIComponent(rawSlug); } catch { notFound(); }
-
-  let data: BookDetailResponse;
-  try {
-    data = await fetchServerApi<BookDetailResponse>(`/api/books/${encodeURIComponent(slug)}`, 0);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) notFound();
-    throw error;
-  }
-
-  const { book } = data;
+  const [{ book }, origin] = await Promise.all([
+    loadBookDetail(rawSlug),
+    resolveRuntimeOrigin(),
+  ]);
+  const bookPath = `/library/${encodeURIComponent(book.slug)}`;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+      <JsonLd
+        data={[
+          buildBreadcrumbJsonLd(origin, [
+            { name: 'الرئيسية', path: '/' },
+            { name: 'المكتبة', path: '/library' },
+            { name: book.category.name, path: `/library?category=${encodeURIComponent(book.category.slug)}` },
+            { name: book.title, path: bookPath },
+          ]),
+          buildBookJsonLd(origin, {
+            name: book.title,
+            description: book.description || `كتاب ${book.title} تأليف ${book.author.name}`,
+            path: bookPath,
+            authorName: book.author.name,
+            authorPath: `/authors/${encodeURIComponent(book.author.slug)}`,
+            categoryName: book.category.name,
+            coverUrl: book.coverUrl,
+            pageCount: book.pageCount,
+          }),
+        ]}
+      />
       <div className="card-manuscript p-6 md:p-8 grid gap-8 md:grid-cols-12">
         <div className="md:col-span-4">
           <div

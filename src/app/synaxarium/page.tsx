@@ -3,8 +3,26 @@ import { Calendar, Search } from 'lucide-react';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
 import { fetchServerApi, queryString, sectionHref, type CopticDateInfoDto, type SynaxariumEntryDto } from '@/lib/api';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const q = queryString(params.q);
+  return buildPageMetadata({
+    title: q ? `البحث في السنكسار القبطي: ${q}` : 'السنكسار القبطي الكامل (13 شهراً)',
+    description:
+      'سير الشهداء والقديسين والأعياد الكنسية اليومية في الكنيسة القبطية الأرثوذكسية مرتبة على مدار الـ 13 شهراً قبطياً.',
+    path: '/synaxarium',
+    keywords: ['السنكسار القبطي', 'سنكسار اليوم', 'سير القديسين والشهداء', 'التقويم القبطي'],
+    noIndex: Boolean(q),
+  });
+}
 
 interface SynaxariumRes {
   today: CopticDateInfoDto;

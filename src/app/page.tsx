@@ -4,10 +4,28 @@ import { SectionIcon } from '@/components/SectionIcon';
 import { SectionArtwork, type SectionArtworkName } from '@/components/SectionArtwork';
 import { fetchServerApi } from '@/lib/api';
 import { CopticCrossIcon } from '@/components/CopticCrossIcon';
+import { JsonLd } from '@/components/JsonLd';
 import { SermonPlayButton } from '@/components/SermonPlayButton';
 import { cairoToday, occasionHref, occasionsForDate, synaxariumReadings } from '@/lib/church-calendar';
+import {
+  DEFAULT_SEO_KEYWORDS,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TAGLINE,
+  buildPageMetadata,
+  buildWebsiteJsonLd,
+  resolveRuntimeOrigin,
+} from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export const metadata = buildPageMetadata({
+  title: `${SITE_NAME} | ${SITE_TAGLINE}`,
+  description: SITE_DESCRIPTION,
+  path: '/',
+  absoluteTitle: true,
+  keywords: DEFAULT_SEO_KEYWORDS,
+});
 
 interface HomeData {
   stats: {
@@ -116,8 +134,10 @@ function SectionHeading({ artwork, title, href, link, description }: {
 
 export default async function HomePage() {
   const today = cairoToday();
-  const [{ stats, liturgy, books, articles, sermons }, calendar] = await Promise.all([
-    loadHomeData(), occasionsForDate(today),
+  const [origin, { stats, liturgy, books, articles, sermons }, calendar] = await Promise.all([
+    resolveRuntimeOrigin(),
+    loadHomeData(),
+    occasionsForDate(today),
   ]);
   const readings = liturgy?.katamerosJson?.sections?.slice(0, 3) || [];
   const firstStory = synaxariumReadings(readings)[0];
@@ -130,6 +150,7 @@ export default async function HomePage() {
 
   return (
     <div className="site-shell home-page">
+      <JsonLd data={buildWebsiteJsonLd(origin)} />
       <section className="home-top">
         <div className="card-manuscript home-hero">
           <div className="home-hero-art" aria-hidden="true" />

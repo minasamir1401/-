@@ -2,8 +2,26 @@ import { SectionArtwork } from '@/components/SectionArtwork';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { fetchServerApi, queryString } from '@/lib/api';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const q = queryString(params.q);
+  return buildPageMetadata({
+    title: q ? `بحث في آيات الكتاب المقدس: ${q}` : 'الكتاب المقدس الكامل (73 سفراً) بالتشكيل والتفسير',
+    description:
+      'اقرأ أسفار العهد القديم والعهد الجديد والأسفار القانونية الثانية باللغة العربية المشكّلة مع البحث السريع في الآيات والتفاسير الآبائية.',
+    path: '/bible',
+    keywords: ['الكتاب المقدس', 'العهد القديم', 'العهد الجديد', 'الأسفار القانونية الثانية', 'بحث في الكتاب المقدس'],
+    noIndex: Boolean(q),
+  });
+}
 
 interface BibleBookItem {
   id: number;

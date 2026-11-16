@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Download, ExternalLink, ListVideo, Play, Search } from 'lucide-react';
+import { buildPageMetadata } from '@/lib/seo';
 import { Pagination } from '@/components/Pagination';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
@@ -23,11 +24,13 @@ import {
   type VideoKind,
 } from '@/lib/media-catalog';
 
-export const metadata: Metadata = {
-  title: 'فيديوهات وشرح وقوائم تشغيل منطق يهوه | المنارة الأرثوذكسية',
+export const metadata: Metadata = buildPageMetadata({
+  title: 'فيديوهات وشرح وقوائم تشغيل منطق يهوه',
   description:
-    'مكتبة مرئية تضم جميع فيديوهات وقوائم تشغيل قناة منطق يهوه (Jehovah Logic)، إلى جانب شروح الإيمان والكتاب المقدس والرد على الشبهات والترانيم والألحان القبطية.',
-};
+    'مكتبة مرئية تضم فيديوهات وقوائم تشغيل قناة منطق يهوه، إلى جانب شروح الإيمان والكتاب المقدس والرد على الشبهات والترانيم والألحان القبطية.',
+  path: '/videos',
+  keywords: ['فيديوهات أرثوذكسية', 'منطق يهوه', 'شروح الإيمان', 'ترانيم وألحان قبطية'],
+});
 
 type SearchParamValue = string | string[] | undefined;
 

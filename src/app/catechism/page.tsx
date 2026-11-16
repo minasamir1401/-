@@ -2,6 +2,15 @@ import Link from 'next/link';
 import { BookOpen } from 'lucide-react';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
+import { buildPageMetadata } from '@/lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'التعليم العقيدي الأرثوذكسي وشرح قانون الإيمان',
+  description:
+    'شرح منظم لقانون الإيمان النيقاوي القسطنطيني، وعقيدة الثالوث والتجسد والفداء، والأسرار السبعة، والطبيعة الواحدة في التعليم القبطي الأرثوذكسي.',
+  path: '/catechism',
+  keywords: ['التعليم العقيدي', 'قانون الإيمان الأرثوذكسي', 'العقيدة القبطية', 'الأسرار الكنسية'],
+});
 
 const CREED_CLAUSES = [
   {

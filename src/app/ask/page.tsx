@@ -2,6 +2,15 @@ import Link from 'next/link';
 import { AskQuestionForm } from '@/components/AskQuestionForm';
 import { SectionArtwork } from '@/components/SectionArtwork';
 import { SectionIcon } from '@/components/SectionIcon';
+import { buildPageMetadata } from '@/lib/seo';
+
+export const metadata = buildPageMetadata({
+  title: 'اسأل عن شبهة أو استفسار عقيدي',
+  description:
+    'أرسل سؤالك العقيدي أو الكتابي أو أي شبهة لمراجعتها وإعداد رد أرثوذكسي موثق بالكتاب المقدس وأقوال الآباء.',
+  path: '/ask',
+  keywords: ['اسأل عن شبهة', 'سؤال عقيدي', 'الرد على الشبهات المسيحية'],
+});
 
 export default function AskPage() {
   return (

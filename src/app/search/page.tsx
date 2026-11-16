@@ -7,8 +7,25 @@ import { SermonPlayButton } from '@/components/SermonPlayButton';
 import { OccasionDates } from '@/components/ChurchOccasions';
 import { cairoToday, churchHymns, georgeCelebration, matchesOccasion, occasionHref, occasionsForDate } from '@/lib/church-calendar';
 import { searchSynaxarium } from '@/lib/synaxarium-search';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const q = queryString(params.q);
+  return buildPageMetadata({
+    title: q ? `نتائج البحث عن: ${q}` : 'البحث الشامل في المنارة الأرثوذكسية',
+    description:
+      'ابحث في آيات الكتاب المقدس، والشبهات والردود، والمكتبة العربية، والشروحات، والعظات، والفيديوهات، والسنكسار.',
+    path: '/search',
+    noIndex: true,
+  });
+}
 
 interface SearchRes {
   query: string;

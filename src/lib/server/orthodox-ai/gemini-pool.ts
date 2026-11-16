@@ -5,11 +5,12 @@ const DEFAULT_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash';
 const MODEL_FALLBACKS = Array.from(
   new Set([
     DEFAULT_MODEL,
+    'gemini-3.1-flash-lite',
+    'gemini-3.1-flash-lite-preview',
     'gemini-3-flash-preview',
     'gemini-3.5-flash-lite',
     'gemini-flash-latest',
     'gemini-flash-lite-latest',
-    'gemini-3.1-flash-lite-preview',
     'gemini-4-hydrogen',
   ]),
 );

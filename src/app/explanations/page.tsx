@@ -3,8 +3,26 @@ import Link from 'next/link';
 import { BookOpen, Search } from 'lucide-react';
 import { fetchServerApi, queryString, sectionHref } from '@/lib/api';
 import { Pagination } from '@/components/Pagination';
+import { buildPageMetadata } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const q = queryString(params.q);
+  return buildPageMetadata({
+    title: q ? `البحث في الشروحات والمقالات: ${q}` : 'الشروحات والمقالات اللاهوتية والروحية',
+    description:
+      'مقالات وأسئلة عقيدية وروحية وطقسية من تراث قداسة البابا شنودة الثالث وآباء الكنيسة القبطية الأرثوذكسية وتفاسير الأصحاحات.',
+    path: '/explanations',
+    keywords: ['شروحات أرثوذكسية', 'مقالات البابا شنودة الثالث', 'أسئلة لاهوتية', 'اللاهوت الطقسي'],
+    noIndex: Boolean(q),
+  });
+}
 
 interface ExplanationsRes {
   items: Array<{
