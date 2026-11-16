@@ -3,6 +3,7 @@ import { Cairo, Noto_Sans_Arabic } from 'next/font/google';
 import './globals.css';
 import { AudioPlayerProvider } from '@/components/AudioPlayerContext';
 import { FloatingAiWidget } from '@/components/FloatingAiWidget';
+import { PwaProvider } from '@/components/PwaProvider';
 import { SiteMotionCoordinator } from '@/components/SiteMotionCoordinator';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -41,6 +42,19 @@ export const metadata: Metadata = {
   authors: [{ name: SITE_NAME }],
   creator: SITE_NAME,
   publisher: SITE_NAME,
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: 'default',
+  },
   formatDetection: {
     telephone: false,
     address: false,
@@ -77,15 +91,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ar" dir="rtl" className={`${cairo.variable} ${notoSansArabic.variable}`}>
       <body className="min-h-screen flex flex-col antialiased">
-        <AudioPlayerProvider>
-          <SiteHeader />
-          <a href="#main" className="sr-only focus:not-sr-only focus:p-3">انتقل إلى المحتوى</a>
-          <main id="main" className="flex-1">
-            <SiteMotionCoordinator>{children}</SiteMotionCoordinator>
-          </main>
-          <FloatingAiWidget />
-          <SiteFooter />
-        </AudioPlayerProvider>
+        <PwaProvider>
+          <AudioPlayerProvider>
+            <SiteHeader />
+            <a href="#main" className="sr-only focus:not-sr-only focus:p-3">انتقل إلى المحتوى</a>
+            <main id="main" className="flex-1">
+              <SiteMotionCoordinator>{children}</SiteMotionCoordinator>
+            </main>
+            <FloatingAiWidget />
+            <SiteFooter />
+          </AudioPlayerProvider>
+        </PwaProvider>
       </body>
     </html>
   );

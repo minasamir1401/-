@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { NavbarOfflineMenu } from './NavbarOfflineMenu';
 import { SectionArtwork } from './SectionArtwork';
 import { SectionIcon } from './SectionIcon';
 
@@ -101,6 +102,8 @@ export function SiteHeader() {
           >
             <Search className="w-4 h-4" />
           </button>
+
+          <NavbarOfflineMenu />
 
           <button
             type="button"

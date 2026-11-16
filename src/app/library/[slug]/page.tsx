@@ -1,4 +1,5 @@
 import { JsonLd } from '@/components/JsonLd';
+import { OfflineBookButton } from '@/components/OfflineBookButton';
 import { SectionIcon } from '@/components/SectionIcon';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -174,6 +175,14 @@ export default async function BookDetailPage({
                 <Download className="w-4 h-4" />
                 <span>{book.format === 'HTML_CHAPTERS' ? 'تحميل نسخة نصية للقراءة' : 'تحميل PDF'}</span>
               </a>
+
+              <OfflineBookButton
+                slug={book.slug}
+                title={book.title}
+                authorName={book.author.name}
+                format={book.format}
+                chapters={book.chapters}
+              />
 
             {book.sourcePageUrl.startsWith('http') && (
               <a

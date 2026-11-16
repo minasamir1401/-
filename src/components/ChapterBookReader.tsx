@@ -16,9 +16,10 @@ interface Props {
   authorName: string;
   chapters: ChapterSummary[];
   initialChapter: number;
+  offlineChapters?: Record<number, string>;
 }
 
-export function ChapterBookReader({ slug, title, authorName, chapters, initialChapter }: Props) {
+export function ChapterBookReader({ slug, title, authorName, chapters, initialChapter, offlineChapters }: Props) {
   const [activeNum, setActiveNum] = useState(initialChapter);
   const [contentHtml, setContentHtml] = useState('');
   const [fontSize, setFontSize] = useState(19);
@@ -28,6 +29,13 @@ export function ChapterBookReader({ slug, title, authorName, chapters, initialCh
   const chapterTitle = chapters[activeIndex]?.title;
 
   useEffect(() => {
+    const cachedHtml = offlineChapters?.[activeNum];
+    if (cachedHtml !== undefined) {
+      setContentHtml(cachedHtml);
+      setFailed(false);
+      setLoading(false);
+      return;
+    }
     const request = new AbortController();
     setLoading(true);
     setFailed(false);
@@ -44,7 +52,7 @@ export function ChapterBookReader({ slug, title, authorName, chapters, initialCh
     return () => {
       request.abort();
     };
-  }, [slug, activeNum]);
+  }, [slug, activeNum, offlineChapters]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-12">

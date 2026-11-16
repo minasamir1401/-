@@ -1,6 +1,7 @@
 'use client';
 
 import { SectionIcon } from '@/components/SectionIcon';
+import { OfflineBookButton } from '@/components/OfflineBookButton';
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight, Download, ZoomIn, ZoomOut } from 'lucide-react';
@@ -232,6 +233,8 @@ export function PdfBookReader({ slug, title, authorName }: Props) {
             <option value="light">نهاري</option>
             <option value="dark">ليلي</option>
           </select>
+
+          <OfflineBookButton slug={slug} title={title} authorName={authorName} format="PDF" compact />
 
           <a
             href={downloadUrl}
