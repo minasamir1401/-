@@ -165,7 +165,7 @@ export function OfflineReaderClient() {
             لم يتم تحميل محتوى الموقع أوفلاين على هذا الجهاز بعد. عندما يتوفر الإنترنت، اضغط «حفظ أوفلاين» من الشريط العلوي لقراءة الكتاب المقدس والشبهات والتفاسير والشروحات والسنكسار بدون نت.
           </p>
           {isOnline && (
-            <button type="button" onClick={startOfflineSync} disabled={offlineBusy} className="brand-button">
+            <button type="button" onClick={() => void startOfflineSync()} disabled={offlineBusy} className="brand-button">
               {offlineBusy ? `جاري الحفظ ${offlineProgress}%` : 'حفظ محتوى الموقع أوفلاين الآن'}
             </button>
           )}

@@ -1,12 +1,15 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Download, Smartphone, X } from 'lucide-react';
 import {
   clearAllSiteOffline,
+  getOfflineCheckpoint,
   getOfflineSyncMeta,
   listSavedBooksOffline,
+  OFFLINE_STAGES,
   syncFullSiteOffline,
+  type OfflineSyncCheckpoint,
   type OfflineSyncMeta,
 } from '@/lib/offline-store';
 
@@ -24,8 +27,9 @@ interface PwaContextValue {
   offlineProgress: number;
   offlineLabel: string;
   syncMeta: OfflineSyncMeta | null;
+  checkpoint: OfflineSyncCheckpoint | null;
   savedBooksCount: number;
-  startOfflineSync: () => Promise<void>;
+  startOfflineSync: (options?: { reset?: boolean }) => Promise<void>;
   clearOfflineData: () => Promise<void>;
   refreshOfflineState: () => Promise<void>;
   openInstallPrompt: () => void;
@@ -61,17 +65,70 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   const [offlineProgress, setOfflineProgress] = useState(0);
   const [offlineLabel, setOfflineLabel] = useState('');
   const [syncMeta, setSyncMeta] = useState<OfflineSyncMeta | null>(null);
+  const [checkpoint, setCheckpoint] = useState<OfflineSyncCheckpoint | null>(null);
   const [savedBooksCount, setSavedBooksCount] = useState(0);
+
+  const offlineBusyRef = useRef(false);
+  const autoResumeRef = useRef(false);
 
   const refreshOfflineState = useCallback(async () => {
     try {
-      const [meta, books] = await Promise.all([getOfflineSyncMeta(), listSavedBooksOffline()]);
+      const [meta, cp, books] = await Promise.all([
+        getOfflineSyncMeta(),
+        getOfflineCheckpoint(),
+        listSavedBooksOffline(),
+      ]);
       setSyncMeta(meta);
+      setCheckpoint(cp);
       setSavedBooksCount(books.length);
+
+      if (cp && !offlineBusyRef.current) {
+        const totalParts = OFFLINE_STAGES.reduce((acc, s) => acc + s.parts.length, 0);
+        const pct =
+          cp.status === 'completed'
+            ? 100
+            : Math.round((cp.completedParts.length / totalParts) * 95);
+        setOfflineProgress(pct);
+        if (cp.status === 'paused' && cp.failedReason) {
+          setOfflineLabel(cp.failedReason);
+        }
+      }
     } catch {
       // IndexedDB unavailable
     }
   }, []);
+
+  const startOfflineSync = useCallback(
+    async (options?: { reset?: boolean }) => {
+      if (offlineBusyRef.current) return;
+      offlineBusyRef.current = true;
+      autoResumeRef.current = false;
+      setOfflineBusy(true);
+      if (options?.reset) {
+        setOfflineProgress(2);
+      }
+      setOfflineLabel('المرحلة 1: جاري بدء تحميل الشبهات...');
+      try {
+        const meta = await syncFullSiteOffline((pct, label, cp) => {
+          setOfflineProgress(pct);
+          setOfflineLabel(label);
+          setCheckpoint(cp);
+        }, options);
+        setSyncMeta(meta);
+        autoResumeRef.current = false;
+      } catch (err) {
+        autoResumeRef.current = true;
+        setOfflineLabel(
+          err instanceof Error ? err.message : 'انقطع الاتصال — سيتم الاستئناف من آخر نقطة',
+        );
+      } finally {
+        offlineBusyRef.current = false;
+        setOfflineBusy(false);
+        await refreshOfflineState();
+      }
+    },
+    [refreshOfflineState],
+  );
 
   useEffect(() => {
     setIsOnline(navigator.onLine);
@@ -96,7 +153,12 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       setDeferredPrompt(earlyPrompt);
     }
 
-    const onOnline = () => setIsOnline(true);
+    const onOnline = () => {
+      setIsOnline(true);
+      if (autoResumeRef.current && !offlineBusyRef.current) {
+        void startOfflineSync({ reset: false });
+      }
+    };
     const onOffline = () => setIsOnline(false);
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -139,7 +201,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
       window.removeEventListener('appinstalled', onAppInstalled);
     };
-  }, [refreshOfflineState]);
+  }, [refreshOfflineState, startOfflineSync]);
 
   const dismissBanner = useCallback(() => {
     setShowBanner(false);
@@ -169,32 +231,15 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     setShowBanner(true);
   }, [deferredPrompt]);
 
-  const startOfflineSync = useCallback(async () => {
-    if (offlineBusy) return;
-    setOfflineBusy(true);
-    setOfflineProgress(2);
-    setOfflineLabel('جاري بدء حفظ محتوى الموقع...');
-    try {
-      const meta = await syncFullSiteOffline((pct, label) => {
-        setOfflineProgress(pct);
-        setOfflineLabel(label);
-      });
-      setSyncMeta(meta);
-    } catch (err) {
-      setOfflineLabel(err instanceof Error ? err.message : 'تعذر حفظ المحتوى، حاول مرة أخرى');
-    } finally {
-      setOfflineBusy(false);
-      await refreshOfflineState();
-    }
-  }, [offlineBusy, refreshOfflineState]);
-
   const clearOfflineData = useCallback(async () => {
-    if (offlineBusy) return;
+    if (offlineBusyRef.current) return;
+    autoResumeRef.current = false;
     await clearAllSiteOffline();
     setSyncMeta(null);
+    setCheckpoint(null);
     setOfflineProgress(0);
     setOfflineLabel('');
-  }, [offlineBusy]);
+  }, []);
 
   return (
     <PwaContext.Provider
@@ -207,6 +252,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
         offlineProgress,
         offlineLabel,
         syncMeta,
+        checkpoint,
         savedBooksCount,
         startOfflineSync,
         clearOfflineData,

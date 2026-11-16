@@ -50,7 +50,7 @@ main, .site-page-transition, .card-manuscript,
 }
 
 main, .site-footer, .ai-drawer-enter {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 input, select, textarea {
@@ -90,6 +90,7 @@ input, select, textarea {
   display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
   background: var(--button-bg); color: white; font-weight: 700; border-radius: .5rem;
   padding: .5rem .85rem; font-size: .85rem; text-align: center;
+  overflow-wrap: normal; word-break: normal;
 }
 .brand-button:hover { filter: brightness(1.12); }
 .site-shell { width: 100%; max-width: 80rem; padding-inline: clamp(1rem, 3vw, 2.2rem); margin-inline: auto; }
@@ -262,15 +263,18 @@ input, select, textarea {
 .home-liturgy { padding: clamp(.8rem, 1.5vw, 1.25rem); display: flex; flex-direction: column; gap: .45rem; }
 .home-today-heading { display: flex; align-items: center; justify-content: space-between; gap: .35rem; }
 .home-today-heading h2 { display: flex; align-items: center; gap: .42rem; color: var(--accent-burgundy); font-weight: 800; font-size: 1.08rem; }
-.home-date { background: var(--bg-surface-muted); border-radius: .6rem; padding: .13rem .55rem; color: var(--accent-burgundy); font-size: .78rem; font-weight: 700; }
+.home-date { background: var(--bg-surface-muted); border-radius: .6rem; padding: .13rem .55rem; color: var(--accent-burgundy); font-size: .78rem; font-weight: 700; white-space: nowrap; }
 .home-today-date { font-size: .74rem; }
+.home-today-date bdi { white-space: nowrap; }
 .home-readings { display: grid; gap: .35rem; }
 .home-reading { display: flex; align-items: center; gap: .7rem; padding: .38rem .7rem; border: 1px solid var(--border-hairline); border-radius: .55rem; background: color-mix(in srgb, var(--bg-surface-muted) 55%, var(--bg-surface)); line-height: 1.4; }
 .home-reading h3 { color: var(--accent-burgundy); font-weight: 800; font-size: .83rem; }
 .home-reading p { color: var(--text-muted); font-size: .73rem; }
 .home-reading .section-icon { color: var(--accent-burgundy); }
-.home-liturgy-actions { margin-top: auto; padding-top: .65rem; display: flex; gap: .4rem; }
-.home-liturgy-actions .brand-button { flex: 1; }
+.home-liturgy-actions { margin-top: auto; padding-top: .65rem; display: flex; gap: .4rem; align-items: center; }
+.home-liturgy-actions > a,
+.home-liturgy-actions > button { flex: 1 1 auto; justify-content: center; white-space: nowrap; }
+.home-liturgy-actions > .brand-button { flex: 1.35 1 auto; }
 .home-liturgy-actions .media-action { font-size: .75rem; justify-content: center; }
 .home-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
 .home-shortcut { display: grid; align-content: start; justify-items: center; text-align: center; padding: .75rem .55rem; gap: .3rem; min-width: 0; }
@@ -347,8 +351,23 @@ input, select, textarea {
   .section-page-banner .section-page-title { font-size: 1.65rem; --section-art-size: 2.75rem; }
   .section-page-title { overflow-wrap: anywhere; }
   .home-today-heading, .home-section-heading { flex-wrap: wrap; }
-  .home-liturgy-actions { flex-wrap: wrap; }
-  .home-liturgy-actions > * { flex: 1 1 7rem; }
+  .home-liturgy-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .45rem;
+    align-items: center;
+  }
+  .home-liturgy-actions > a,
+  .home-liturgy-actions > button {
+    width: 100%;
+    min-height: 2.75rem;
+    padding-block: .5rem;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .home-liturgy-actions > :last-child {
+    grid-column: 1 / -1;
+  }
   .home-more { min-height: 2.75rem; }
   .brand-button, .media-action { min-height: 2.75rem; max-width: 100%; }
   .brand-button > svg, .media-action > svg { flex: none; }
@@ -371,6 +390,8 @@ input, select, textarea {
   font-size: .875rem;
   font-weight: 600;
   text-align: start;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .media-action:hover { border-color: var(--accent-gold); }
 .media-action-active { background: var(--accent-burgundy); color: #fff; }
@@ -859,6 +880,12 @@ article.home-book:hover,
   background: color-mix(in srgb, #22c55e 14%, var(--bg-surface));
 }
 
+.navbar-offline-trigger.is-paused {
+  border-color: color-mix(in srgb, var(--accent-gold) 75%, var(--border-hairline));
+  color: var(--heading-ink);
+  background: color-mix(in srgb, var(--accent-gold) 16%, var(--bg-surface));
+}
+
 .navbar-offline-trigger.is-offline {
   border-color: color-mix(in srgb, var(--accent-gold) 65%, var(--border-hairline));
   background: color-mix(in srgb, var(--accent-gold) 14%, var(--bg-surface));
@@ -942,9 +969,71 @@ article.home-book:hover,
 
 .navbar-offline-desc {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   line-height: 1.55;
   color: var(--text-muted);
+}
+
+.navbar-offline-stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.navbar-offline-stage {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border-hairline);
+  background: var(--bg-surface-muted);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.navbar-offline-stage.is-done {
+  border-color: color-mix(in srgb, #15803d 35%, var(--border-hairline));
+  background: color-mix(in srgb, #22c55e 9%, var(--bg-surface));
+  color: #166534;
+}
+
+.dark .navbar-offline-stage.is-done {
+  color: #86efac;
+}
+
+.navbar-offline-stage.is-active {
+  border-color: var(--accent-burgundy);
+  color: var(--heading-ink);
+  font-weight: 700;
+}
+
+.navbar-offline-stage.is-halted {
+  border-color: var(--accent-gold);
+  background: color-mix(in srgb, var(--accent-gold) 14%, var(--bg-surface));
+  color: var(--heading-ink);
+  font-weight: 700;
+}
+
+.navbar-offline-stage-icon {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
+.navbar-offline-stage-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.navbar-offline-stage-meta {
+  flex: none;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .navbar-offline-progress-box {

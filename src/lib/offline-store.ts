@@ -7,16 +7,16 @@ export const BOOKS_PDF_CACHE_NAME = 'orthodox-books-pdf-v1';
 const APP_SHELL_URLS = [
   '/',
   '/offline-reader',
+  '/apologetics',
   '/bible',
   '/commentaries',
-  '/apologetics',
   '/catechism',
   '/explanations',
+  '/synaxarium',
+  '/liturgy',
   '/library',
   '/sermons',
   '/videos',
-  '/liturgy',
-  '/synaxarium',
   '/about',
   '/ask',
   '/design/church.webp',
@@ -39,9 +39,55 @@ const APP_SHELL_URLS = [
   '/pdf.worker.min.mjs',
 ];
 
+export type OfflineStageId =
+  | 'apologetics'
+  | 'bible_catechism'
+  | 'explanations'
+  | 'liturgy_synaxarium';
+
+export interface OfflineStageDefinition {
+  id: OfflineStageId;
+  order: number;
+  title: string;
+  parts: readonly string[];
+  pages: readonly string[];
+}
+
+export const OFFLINE_STAGES: readonly OfflineStageDefinition[] = [
+  {
+    id: 'apologetics',
+    order: 1,
+    title: 'الشبهات والردود',
+    parts: ['core', 'apologetics'],
+    pages: ['/', '/apologetics', '/offline-reader'],
+  },
+  {
+    id: 'bible_catechism',
+    order: 2,
+    title: 'الكتاب المقدس والعقيدة',
+    parts: ['bible-1', 'bible-2', 'bible-3'],
+    pages: ['/bible', '/catechism'],
+  },
+  {
+    id: 'explanations',
+    order: 3,
+    title: 'الشروحات والمقالات',
+    parts: ['explanations'],
+    pages: ['/explanations'],
+  },
+  {
+    id: 'liturgy_synaxarium',
+    order: 4,
+    title: 'السنكسار والليتورجيا',
+    parts: ['synaxarium'],
+    pages: ['/synaxarium', '/liturgy', '/about', '/ask', '/library', '/sermons', '/videos'],
+  },
+];
+
 export interface OfflineSyncMeta {
   syncedAt: string;
   totalBytes: number;
+  isComplete?: boolean;
   counts: {
     bibleBooks: number;
     bibleChapters: number;
@@ -52,6 +98,18 @@ export interface OfflineSyncMeta {
     booksCatalog: number;
     sermons: number;
   };
+}
+
+export interface OfflineSyncCheckpoint {
+  status: 'running' | 'paused' | 'completed';
+  completedParts: string[];
+  completedStages: OfflineStageId[];
+  currentStage: OfflineStageId | null;
+  currentPart: string | null;
+  failedReason?: string;
+  updatedAt: string;
+  totalBytes: number;
+  counts: OfflineSyncMeta['counts'];
 }
 
 export interface OfflineSavedBook {
@@ -216,11 +274,36 @@ export async function getOfflineSyncMeta(): Promise<OfflineSyncMeta | null> {
   }
 }
 
-async function collectNextChunksFromShell(): Promise<string[]> {
-  const discovered = new Set<string>(APP_SHELL_URLS);
-  const shellPages = ['/', '/bible', '/apologetics', '/library', '/liturgy', '/offline-reader'];
+const CHECKPOINT_KV_KEY = 'syncCheckpointV2';
+
+export async function getOfflineCheckpoint(): Promise<OfflineSyncCheckpoint | null> {
+  if (typeof indexedDB === 'undefined') return null;
+  const db = await openOfflineDb();
+  try {
+    const row = await getRecord<{ key: string; value: OfflineSyncCheckpoint }>(db, 'kv', CHECKPOINT_KV_KEY);
+    return row?.value ?? null;
+  } finally {
+    db.close();
+  }
+}
+
+function createEmptyCounts(): OfflineSyncMeta['counts'] {
+  return {
+    bibleBooks: 0,
+    bibleChapters: 0,
+    apologetics: 0,
+    explanations: 0,
+    commentaries: 0,
+    synaxarium: 0,
+    booksCatalog: 0,
+    sermons: 0,
+  };
+}
+
+async function collectNextChunksFromPages(pages: readonly string[]): Promise<string[]> {
+  const discovered = new Set<string>(pages);
   await Promise.all(
-    shellPages.map(async (pageUrl) => {
+    pages.map(async (pageUrl) => {
       try {
         const res = await fetch(pageUrl, { credentials: 'same-origin' });
         if (!res.ok) return;
@@ -235,157 +318,250 @@ async function collectNextChunksFromShell(): Promise<string[]> {
   return Array.from(discovered);
 }
 
+async function cacheUrls(urls: readonly string[]): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'CACHE_APP_SHELL', urls: [...urls] });
+    return;
+  }
+  if ('caches' in window) {
+    const pageCache = await caches.open('orthodox-pages-v1');
+    await Promise.allSettled(
+      urls.filter((u) => !u.startsWith('/design/') && !u.endsWith('.mjs')).map((u) => pageCache.add(u)),
+    );
+  }
+}
+
+async function fetchBundlePartFast(
+  partKey: string,
+): Promise<{ data: Record<string, unknown>; wireBytes: number }> {
+  const canStreamGz = typeof DecompressionStream !== 'undefined';
+  const url = canStreamGz
+    ? `/api/offline/bundle?part=${partKey}&fmt=gz`
+    : `/api/offline/bundle?part=${partKey}`;
+
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`تعذر تحميل الحزمة (${partKey})`);
+
+  if (canStreamGz && res.headers.get('X-Payload-Compression') === 'gzip') {
+    const compressedBuf = await res.arrayBuffer();
+    const stream = new Blob([compressedBuf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    const text = await new Response(stream).text();
+    return { data: JSON.parse(text), wireBytes: compressedBuf.byteLength };
+  }
+
+  const rawText = await res.text();
+  return { data: JSON.parse(rawText), wireBytes: rawText.length };
+}
+
 export async function syncFullSiteOffline(
-  onProgress: (percent: number, label: string) => void,
+  onProgress: (percent: number, label: string, checkpoint: OfflineSyncCheckpoint) => void,
+  options?: { reset?: boolean },
 ): Promise<OfflineSyncMeta> {
   const db = await openOfflineDb();
-  const partLabels: Array<[string, string]> = [
-    ['core', 'جاري حفظ الفهارس والقداس والأسفار...'],
-    ['bible-1', 'جاري حفظ الكتاب المقدس (1 من 3)...'],
-    ['bible-2', 'جاري حفظ الكتاب المقدس (2 من 3)...'],
-    ['bible-3', 'جاري حفظ الكتاب المقدس (3 من 3)...'],
-    ['apologetics', 'جاري حفظ موسوعة الرد على الشبهات...'],
-    ['explanations', 'جاري حفظ الشروحات والمقالات...'],
-    ['commentaries-1', 'جاري حفظ تفاسير الآباء (1 من 6)...'],
-    ['commentaries-2', 'جاري حفظ تفاسير الآباء (2 من 6)...'],
-    ['commentaries-3', 'جاري حفظ تفاسير الآباء (3 من 6)...'],
-    ['commentaries-4', 'جاري حفظ تفاسير الآباء (4 من 6)...'],
-    ['commentaries-5', 'جاري حفظ تفاسير الآباء (5 من 6)...'],
-    ['commentaries-6', 'جاري حفظ تفاسير الآباء (6 من 6)...'],
-    ['synaxarium', 'جاري حفظ السنكسار القبطي...'],
-  ];
+  const totalPartsCount = OFFLINE_STAGES.reduce((acc, s) => acc + s.parts.length, 0);
 
-  let totalBytes = 0;
-  let bibleBooksCount = 0;
-  let bibleChaptersCount = 0;
-  let apologeticsCount = 0;
-  let explanationsCount = 0;
-  let commentariesCount = 0;
-  let synaxariumCount = 0;
-  let booksCatalogCount = 0;
-  let sermonsCount = 0;
-  let completedParts = 0;
+  const existingCheckpoint = options?.reset
+    ? null
+    : await getRecord<{ key: string; value: OfflineSyncCheckpoint }>(db, 'kv', CHECKPOINT_KV_KEY).then(
+        (r) => r?.value ?? null,
+      );
+
+  const validStageIds = new Set<OfflineStageId>(OFFLINE_STAGES.map((s) => s.id));
+  const completedParts = new Set<string>(existingCheckpoint?.completedParts ?? []);
+  const completedStages = new Set<OfflineStageId>(
+    (existingCheckpoint?.completedStages ?? []).filter((id) => validStageIds.has(id)),
+  );
+  const counts: OfflineSyncMeta['counts'] = {
+    ...createEmptyCounts(),
+    ...(existingCheckpoint?.counts ?? {}),
+  };
+  let totalBytes = existingCheckpoint?.totalBytes ?? 0;
+
+  let currentStage: OfflineStageId | null = null;
+  let currentPart: string | null = null;
+
+  const buildCheckpoint = (
+    status: OfflineSyncCheckpoint['status'],
+    failedReason?: string,
+  ): OfflineSyncCheckpoint => ({
+    status,
+    completedParts: Array.from(completedParts),
+    completedStages: Array.from(completedStages),
+    currentStage,
+    currentPart,
+    ...(failedReason ? { failedReason } : {}),
+    updatedAt: new Date().toISOString(),
+    totalBytes,
+    counts: { ...counts },
+  });
+
+  const persistCheckpointAndPartialMeta = async (
+    status: OfflineSyncCheckpoint['status'],
+    failedReason?: string,
+  ) => {
+    const cp = buildCheckpoint(status, failedReason);
+    const meta: OfflineSyncMeta = {
+      syncedAt: cp.updatedAt,
+      totalBytes: cp.totalBytes,
+      isComplete: status === 'completed',
+      counts: cp.counts,
+    };
+    await putBatch(db, 'kv', [
+      { key: CHECKPOINT_KV_KEY, value: cp },
+      { key: 'syncMeta', value: meta },
+    ]);
+    return { cp, meta };
+  };
+
+  async function savePartPayload(partKey: string, data: Record<string, unknown>, wireBytes: number) {
+    totalBytes += wireBytes;
+
+    if (partKey === 'core') {
+      const bibleBooks = (data.bibleBooks as unknown[]) || [];
+      const books = (data.books as unknown[]) || [];
+      const sermons = (data.sermons as unknown[]) || [];
+      counts.bibleBooks = bibleBooks.length;
+      counts.booksCatalog = books.length;
+      counts.sermons = sermons.length;
+      await putBatch(db, 'kv', [{ key: 'coreData', value: data }]);
+    } else if (partKey === 'apologetics') {
+      const entries = (data.entries as OfflineApologeticsEntry[]) || [];
+      counts.apologetics = entries.length;
+      const summaryIndex = entries.map((e) => ({
+        id: e.id,
+        slug: e.slug,
+        domain: e.domain,
+        domainAr: e.domainAr,
+        question: e.question,
+        shortSummary: e.shortSummary,
+        bibleRefs: e.bibleRefs,
+      }));
+      await putBatch(db, 'apologetics', entries);
+      await putBatch(db, 'kv', [{ key: 'apologeticsList', value: summaryIndex }]);
+    } else if (partKey.startsWith('bible-')) {
+      const chapters =
+        (data.chapters as Array<{ slug: string; chapter: number; verses: Array<[number, string]> }>) || [];
+      const rows = chapters.map((c) => ({
+        key: `${c.slug}:${c.chapter}`,
+        slug: c.slug,
+        chapter: c.chapter,
+        verses: c.verses,
+      }));
+      counts.bibleChapters += rows.length;
+      await putBatch(db, 'bibleChapters', rows);
+    } else if (partKey.startsWith('commentaries-')) {
+      const items = (data.items as OfflineCommentaryItem[]) || [];
+      counts.commentaries += items.length;
+      const buckets = new Map<string, OfflineCommentaryItem[]>();
+      for (const item of items) {
+        const key = `${item.book.slug}:${item.chapter}`;
+        let arr = buckets.get(key);
+        if (!arr) {
+          arr = [];
+          buckets.set(key, arr);
+        }
+        arr.push(item);
+      }
+      const records = Array.from(buckets.entries()).map(([key, chunkItems]) => ({
+        key,
+        items: chunkItems,
+      }));
+      await putBatch(db, 'commentaries', records);
+    } else if (partKey === 'explanations') {
+      const articles = (data.articles as OfflineExplanationArticle[]) || [];
+      counts.explanations = articles.length;
+      const summaryIndex = articles.map((a) => ({
+        id: a.id,
+        slug: a.slug,
+        title: a.title,
+        summary: a.summary,
+        authorName: a.authorName,
+        sourceName: a.sourceName,
+        category: a.category,
+      }));
+      await putBatch(db, 'explanations', articles);
+      await putBatch(db, 'kv', [{ key: 'explanationsList', value: summaryIndex }]);
+    } else if (partKey === 'synaxarium') {
+      const entries = (data.entries as OfflineSynaxariumEntry[]) || [];
+      counts.synaxarium = entries.length;
+      await putBatch(db, 'kv', [{ key: 'synaxariumList', value: entries }]);
+    }
+
+    completedParts.add(partKey);
+  }
 
   try {
-    const totalSteps = partLabels.length + 1;
-    let nextIndex = 0;
+    for (const stage of OFFLINE_STAGES) {
+      if (completedStages.has(stage.id) && stage.parts.every((p) => completedParts.has(p))) {
+        continue;
+      }
 
-    async function processPart([partKey, label]: [string, string]) {
-      onProgress(Math.round((completedParts / totalSteps) * 100), label);
+      currentStage = stage.id;
+      const pendingParts = stage.parts.filter((p) => !completedParts.has(p));
 
-      const res = await fetch(`/api/offline/bundle?part=${partKey}`, { cache: 'no-store' });
-      if (!res.ok) throw new Error(`تعذر تنزيل الحزمة (${partKey})`);
-      const rawText = await res.text();
-      totalBytes += rawText.length;
-      const data = JSON.parse(rawText);
+      if (pendingParts.length > 0) {
+        const initialPct = Math.round((completedParts.size / totalPartsCount) * 95);
+        const startLabel = `المرحلة ${stage.order} من 4: جاري تحميل ${stage.title}...`;
+        const { cp } = await persistCheckpointAndPartialMeta('running');
+        onProgress(initialPct, startLabel, cp);
 
-      if (partKey === 'core') {
-        bibleBooksCount = data.bibleBooks?.length || 0;
-        booksCatalogCount = data.books?.length || 0;
-        sermonsCount = data.sermons?.length || 0;
-        await putBatch(db, 'kv', [{ key: 'coreData', value: data }]);
-      } else if (partKey.startsWith('bible-')) {
-        const rows = (data.chapters || []).map((c: { slug: string; chapter: number; verses: Array<[number, string]> }) => ({
-          key: `${c.slug}:${c.chapter}`,
-          slug: c.slug,
-          chapter: c.chapter,
-          verses: c.verses,
-        }));
-        bibleChaptersCount += rows.length;
-        await putBatch(db, 'bibleChapters', rows);
-      } else if (partKey === 'apologetics') {
-        const entries = (data.entries || []) as OfflineApologeticsEntry[];
-        apologeticsCount = entries.length;
-        const summaryIndex = entries.map((e) => ({
-          id: e.id,
-          slug: e.slug,
-          domain: e.domain,
-          domainAr: e.domainAr,
-          question: e.question,
-          shortSummary: e.shortSummary,
-          bibleRefs: e.bibleRefs,
-        }));
-        await putBatch(db, 'apologetics', entries);
-        await putBatch(db, 'kv', [{ key: 'apologeticsList', value: summaryIndex }]);
-      } else if (partKey === 'explanations') {
-        const articles = (data.articles || []) as OfflineExplanationArticle[];
-        explanationsCount = articles.length;
-        const summaryIndex = articles.map((a) => ({
-          id: a.id,
-          slug: a.slug,
-          title: a.title,
-          summary: a.summary,
-          authorName: a.authorName,
-          sourceName: a.sourceName,
-          category: a.category,
-        }));
-        await putBatch(db, 'explanations', articles);
-        await putBatch(db, 'kv', [{ key: 'explanationsList', value: summaryIndex }]);
-      } else if (partKey.startsWith('commentaries-')) {
-        const items = (data.items || []) as OfflineCommentaryItem[];
-        commentariesCount += items.length;
-        const localBuckets = new Map<string, OfflineCommentaryItem[]>();
-        for (const item of items) {
-          const key = `${item.book.slug}:${item.chapter}`;
-          let arr = localBuckets.get(key);
-          if (!arr) {
-            arr = [];
-            localBuckets.set(key, arr);
+        let cursor = 0;
+        const concurrency = stage.id === 'bible_catechism' ? 3 : Math.min(2, pendingParts.length);
+        let saveChain = Promise.resolve();
+
+        const runWorker = async () => {
+          while (cursor < pendingParts.length) {
+            const partKey = pendingParts[cursor++];
+            currentPart = partKey;
+            const { data, wireBytes } = await fetchBundlePartFast(partKey);
+
+            // Serialize IndexedDB state mutations so concurrent workers never drop checkpoint updates
+            saveChain = saveChain.then(async () => {
+              await savePartPayload(partKey, data, wireBytes);
+              const { cp: updatedCp } = await persistCheckpointAndPartialMeta('running');
+              const pct = Math.min(95, Math.round((completedParts.size / totalPartsCount) * 95));
+              onProgress(pct, `المرحلة ${stage.order}: ${stage.title} (${completedParts.size}/${totalPartsCount})`, updatedCp);
+            });
+            await saveChain;
           }
-          arr.push(item);
-        }
-        const records = Array.from(localBuckets.entries()).map(([key, chunkItems]) => ({
-          key,
-          items: chunkItems,
-        }));
-        await putBatch(db, 'commentaries', records);
-      } else if (partKey === 'synaxarium') {
-        const entries = (data.entries || []) as OfflineSynaxariumEntry[];
-        synaxariumCount = entries.length;
-        await putBatch(db, 'kv', [{ key: 'synaxariumList', value: entries }]);
+        };
+
+        await Promise.all(Array.from({ length: concurrency }, runWorker));
       }
 
-      completedParts += 1;
-      onProgress(Math.round((completedParts / totalSteps) * 100), label);
-    }
-
-    async function worker() {
-      while (nextIndex < partLabels.length) {
-        const item = partLabels[nextIndex++];
-        await processPart(item);
+      if (stage.pages.length > 0) {
+        const urls = await collectNextChunksFromPages(stage.pages);
+        await cacheUrls(urls);
       }
+
+      completedStages.add(stage.id);
+      currentPart = null;
+      const { cp: stageDoneCp } = await persistCheckpointAndPartialMeta('running');
+      const stagePct = Math.min(96, Math.round((completedParts.size / totalPartsCount) * 95));
+      onProgress(stagePct, `اكتملت المرحلة ${stage.order}: ${stage.title}`, stageDoneCp);
     }
 
-    await Promise.all(Array.from({ length: 3 }, worker));
+    onProgress(98, 'جاري تثبيت الأصول والملفات الثابتة (دون الكتب)...', buildCheckpoint('running'));
+    const extraStatic = APP_SHELL_URLS.filter((u) => !u.startsWith('/library/'));
+    await cacheUrls(extraStatic);
 
-    onProgress(92, 'جاري حفظ صفحات التطبيق والملفات الثابتة (دون ملفات الكتب)...');
-    const shellUrls = await collectNextChunksFromShell();
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage({ type: 'CACHE_APP_SHELL', urls: shellUrls });
-    } else if ('caches' in window) {
-      const pageCache = await caches.open('orthodox-pages-v1');
-      await Promise.allSettled(
-        APP_SHELL_URLS.filter((u) => !u.startsWith('/design/') && !u.endsWith('.mjs')).map((u) => pageCache.add(u)),
-      );
-    }
-
-    const meta: OfflineSyncMeta = {
-      syncedAt: new Date().toISOString(),
-      totalBytes,
-      counts: {
-        bibleBooks: bibleBooksCount,
-        bibleChapters: bibleChaptersCount,
-        apologetics: apologeticsCount,
-        explanations: explanationsCount,
-        commentaries: commentariesCount,
-        synaxarium: synaxariumCount,
-        booksCatalog: booksCatalogCount,
-        sermons: sermonsCount,
-      },
-    };
-    await putBatch(db, 'kv', [{ key: 'syncMeta', value: meta }]);
-    onProgress(100, 'تم حفظ كل محتوى الموقع للعمل أوفلاين بنجاح.');
-    return meta;
+    currentStage = null;
+    currentPart = null;
+    const { cp: finalCp, meta: finalMeta } = await persistCheckpointAndPartialMeta('completed');
+    onProgress(100, 'تم حفظ كل المراحل للعمل أوفلاين بنجاح.', finalCp);
+    return finalMeta;
+  } catch (err) {
+    const reason =
+      !navigator.onLine
+        ? 'انقطع الاتصال بالإنترنت — محفوظ حتى آخر نقطة'
+        : err instanceof Error
+          ? err.message
+          : 'توقف التحميل مؤقتًا — يمكن الاستئناف من آخر نقطة';
+    const { cp: pausedCp } = await persistCheckpointAndPartialMeta('paused', reason);
+    const pct = Math.round((completedParts.size / totalPartsCount) * 95);
+    onProgress(pct, reason, pausedCp);
+    throw err;
   } finally {
     db.close();
   }
