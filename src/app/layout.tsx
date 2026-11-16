@@ -91,6 +91,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ar" dir="rtl" className={`${cairo.variable} ${notoSansArabic.variable}`}>
       <body className="min-h-screen flex flex-col antialiased">
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "window.__deferredPwaPrompt=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__deferredPwaPrompt=e;});",
+          }}
+        />
         <PwaProvider>
           <AudioPlayerProvider>
             <SiteHeader />

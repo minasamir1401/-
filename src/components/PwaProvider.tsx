@@ -35,7 +35,13 @@ interface PwaContextValue {
 const PwaContext = createContext<PwaContextValue | null>(null);
 
 const DISMISS_KEY = 'orthodox-pwa-install-dismissed';
-const DISMISS_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+const DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
+
+declare global {
+  interface Window {
+    __deferredPwaPrompt?: BeforeInstallPromptEvent | null;
+  }
+}
 
 export function usePwa() {
   const ctx = useContext(PwaContext);
@@ -85,11 +91,19 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
 
     void refreshOfflineState();
 
+    const earlyPrompt = window.__deferredPwaPrompt;
+    if (earlyPrompt) {
+      setDeferredPrompt(earlyPrompt);
+    }
+
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+      const promptEvent = e as BeforeInstallPromptEvent;
+      window.__deferredPwaPrompt = promptEvent;
+      setDeferredPrompt(promptEvent);
+      setShowManualHint(false);
       const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0);
       if (!standalone && Date.now() - dismissedAt > DISMISS_TTL_MS) {
         setShowBanner(true);
@@ -98,6 +112,8 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     const onAppInstalled = () => {
       setIsInstalled(true);
       setShowBanner(false);
+      setShowManualHint(false);
+      window.__deferredPwaPrompt = null;
       setDeferredPrompt(null);
     };
 
@@ -106,18 +122,18 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     window.addEventListener('appinstalled', onAppInstalled);
 
-    let iosTimer: ReturnType<typeof setTimeout> | undefined;
+    let showTimer: ReturnType<typeof setTimeout> | undefined;
     if (!standalone) {
       const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || 0);
       if (Date.now() - dismissedAt > DISMISS_TTL_MS) {
-        iosTimer = setTimeout(() => {
-          setShowBanner((prev) => prev || ios);
-        }, 2500);
+        showTimer = setTimeout(() => {
+          setShowBanner(true);
+        }, 1200);
       }
     }
 
     return () => {
-      if (iosTimer) clearTimeout(iosTimer);
+      if (showTimer) clearTimeout(showTimer);
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
       window.removeEventListener('beforeinstallprompt', onBeforeInstall);
@@ -132,11 +148,14 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const triggerInstall = useCallback(async () => {
-    if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
+    const promptEvent = deferredPrompt ?? window.__deferredPwaPrompt ?? null;
+    if (promptEvent) {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
       if (choice.outcome === 'accepted') {
         setShowBanner(false);
+        setShowManualHint(false);
+        window.__deferredPwaPrompt = null;
         setDeferredPrompt(null);
       }
       return;
@@ -226,7 +245,7 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
             <p className="pwa-install-hint">
               {isIosSafari
                 ? 'على آيفون أو آيباد: اضغط زر المشاركة في أسفل Safari ثم اختر «إضافة إلى الشاشة الرئيسية».'
-                : 'من قائمة المتصفح (⋮) اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».'}
+                : 'لتثبيت التطبيق: اضغط أيقونة التثبيت في شريط العنوان بالأعلى، أو افتح قائمة المتصفح (⋮) واختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية».'}
             </p>
           )}
 

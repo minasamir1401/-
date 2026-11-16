@@ -826,7 +826,7 @@ article.home-book:hover,
   background: color-mix(in srgb, #22c55e 9%, var(--bg-surface));
 }
 
-[data-theme='dark'] .navbar-offline-trigger.is-synced {
+.dark .navbar-offline-trigger.is-synced {
   color: #86efac;
   background: color-mix(in srgb, #22c55e 14%, var(--bg-surface));
 }
@@ -890,7 +890,7 @@ article.home-book:hover,
   color: #166534;
 }
 
-[data-theme='dark'] .navbar-offline-badge.is-online {
+.dark .navbar-offline-badge.is-online {
   color: #86efac;
 }
 
@@ -994,6 +994,8 @@ article.home-book:hover,
   z-index: 46;
   width: min(calc(100vw - 2rem), 23.5rem);
   padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: var(--bg-surface);
   border: 1px solid color-mix(in srgb, var(--accent-gold) 45%, var(--border-hairline));
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
   display: flex;
